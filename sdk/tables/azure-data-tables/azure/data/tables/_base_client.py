@@ -289,6 +289,7 @@ class TablesBaseClient(AccountHostsMixin):
         )
         pipeline_response = self._client._client._pipeline.run(request, **kwargs)  # pylint: disable=protected-access
         response = pipeline_response.http_response
+        breakpoint()
         if response.status_code == 413:
             raise _decode_error(
                 response, error_message="The transaction request was too large", error_type=RequestTooLargeError
@@ -299,8 +300,10 @@ class TablesBaseClient(AccountHostsMixin):
             raise decoded
 
         try:
+            breakpoint()
             parts = list(response.parts())
         except IndexError:
+            breakpoint()
             return []
         error_parts = [p for p in parts if not 200 <= p.status_code < 300]
         if any(error_parts):

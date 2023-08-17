@@ -700,6 +700,7 @@ class TestTableBatchCosmos(AzureRecordedTestCase, TableTestCase):
         with TableClient(url, table_name, credential=tables_primary_cosmos_account_key) as client:
             client.create_table()
             with pytest.raises(HttpResponseError) as ex:
+                breakpoint()
                 client.submit_transaction([])
             assert "The batch request body is malformed." in str(ex.value)
             client.delete_table()

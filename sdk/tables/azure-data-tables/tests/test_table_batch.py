@@ -973,7 +973,10 @@ class TestTableBatch(AzureRecordedTestCase, TableTestCase):
         url = self.account_url(tables_storage_account_name, "table")
         table_name = self.get_resource_name("mytable")
         with TableClient(url, table_name, credential=tables_primary_storage_account_key) as client:
-            client.create_table()
+            # client.create_table()
+            # entity1 = {"PartitionKey": "A'aaa\"_bbbb2", "RowKey": '"A\'aaa"_bbbb2', "test": '"A\'aaa"_bbbb2'}
+            # result = client.submit_transaction([("create", entity1)])
+            breakpoint()
             result = client.submit_transaction([])
             assert result == []
             client.delete_table()

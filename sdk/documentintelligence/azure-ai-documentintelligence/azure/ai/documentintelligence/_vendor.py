@@ -5,34 +5,13 @@
 # Changes may cause incorrect behavior and will be lost if the code is regenerated.
 # --------------------------------------------------------------------------
 
-from abc import ABC
-from typing import TYPE_CHECKING
 
-from ._configuration import (
-    DocumentIntelligenceAdministrationClientConfiguration,
-    DocumentIntelligenceClientConfiguration,
-)
-
-if TYPE_CHECKING:
-    # pylint: disable=unused-import,ungrouped-imports
-    from azure.core import PipelineClient
-
-    from ._serialization import Deserializer, Serializer
-
-
-class DocumentIntelligenceClientMixinABC(ABC):
-    """DO NOT use this class. It is for internal typing use only."""
-
-    _client: "PipelineClient"
-    _config: DocumentIntelligenceClientConfiguration
-    _serialize: "Serializer"
-    _deserialize: "Deserializer"
-
-
-class DocumentIntelligenceAdministrationClientMixinABC(ABC):  # pylint: disable=name-too-long
-    """DO NOT use this class. It is for internal typing use only."""
-
-    _client: "PipelineClient"
-    _config: DocumentIntelligenceAdministrationClientConfiguration
-    _serialize: "Serializer"
-    _deserialize: "Deserializer"
+def raise_if_not_implemented(cls, abstract_methods):
+    not_implemented = [f for f in abstract_methods if not callable(getattr(cls, f, None))]
+    if not_implemented:
+        raise NotImplementedError(
+            "The following methods on operation group '{}' are not implemented: '{}'."
+            " Please refer to https://aka.ms/azsdk/python/dpcodegen/python/customize to learn how to customize.".format(
+                cls.__name__, "', '".join(not_implemented)
+            )
+        )

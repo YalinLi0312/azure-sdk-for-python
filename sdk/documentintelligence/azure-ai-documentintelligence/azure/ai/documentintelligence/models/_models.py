@@ -1035,7 +1035,7 @@ class OperationDetails(_model_base.Model):
     """Date and time (UTC) when the operation was created. Required."""
     last_updated_date_time: datetime.datetime = rest_field(name="lastUpdatedDateTime", format="rfc3339")
     """Date and time (UTC) when the status was last updated. Required."""
-    kind: Literal[None] = rest_discriminator(name="kind")
+    kind: str = rest_discriminator(name="kind")
     """Type of operation. Required. Known values are: \"documentModelBuild\",
      \"documentModelCompose\", \"documentModelCopyTo\", and \"documentClassifierBuild\"."""
     resource_location: str = rest_field(name="resourceLocation")
@@ -1055,6 +1055,7 @@ class OperationDetails(_model_base.Model):
         status: Union[str, "_models.OperationStatus"],
         created_date_time: datetime.datetime,
         last_updated_date_time: datetime.datetime,
+        kind: str,
         resource_location: str,
         percent_completed: Optional[int] = None,
         api_version: Optional[str] = None,
@@ -1070,9 +1071,8 @@ class OperationDetails(_model_base.Model):
         :type mapping: Mapping[str, Any]
         """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # pylint: disable=useless-super-delegation
         super().__init__(*args, **kwargs)
-        self.kind: Literal[None] = None
 
 
 class DocumentClassifierBuildOperationDetails(
@@ -1136,9 +1136,8 @@ class DocumentClassifierBuildOperationDetails(
         :type mapping: Mapping[str, Any]
         """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.kind: Literal[OperationKind.DOCUMENT_CLASSIFIER_BUILD] = OperationKind.DOCUMENT_CLASSIFIER_BUILD
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # pylint: disable=useless-super-delegation
+        super().__init__(*args, kind=OperationKind.DOCUMENT_CLASSIFIER_BUILD, **kwargs)
 
 
 class DocumentClassifierDetails(_model_base.Model):
@@ -1862,9 +1861,8 @@ class DocumentModelBuildOperationDetails(
         :type mapping: Mapping[str, Any]
         """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.kind: Literal[OperationKind.DOCUMENT_MODEL_BUILD] = OperationKind.DOCUMENT_MODEL_BUILD
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # pylint: disable=useless-super-delegation
+        super().__init__(*args, kind=OperationKind.DOCUMENT_MODEL_BUILD, **kwargs)
 
 
 class DocumentModelComposeOperationDetails(
@@ -1929,9 +1927,8 @@ class DocumentModelComposeOperationDetails(
         :type mapping: Mapping[str, Any]
         """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.kind: Literal[OperationKind.DOCUMENT_MODEL_COMPOSE] = OperationKind.DOCUMENT_MODEL_COMPOSE
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # pylint: disable=useless-super-delegation
+        super().__init__(*args, kind=OperationKind.DOCUMENT_MODEL_COMPOSE, **kwargs)
 
 
 class DocumentModelCopyToOperationDetails(
@@ -1999,9 +1996,8 @@ class DocumentModelCopyToOperationDetails(
         :type mapping: Mapping[str, Any]
         """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.kind: Literal[OperationKind.DOCUMENT_MODEL_COPY_TO] = OperationKind.DOCUMENT_MODEL_COPY_TO
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # pylint: disable=useless-super-delegation
+        super().__init__(*args, kind=OperationKind.DOCUMENT_MODEL_COPY_TO, **kwargs)
 
 
 class DocumentModelDetails(_model_base.Model):

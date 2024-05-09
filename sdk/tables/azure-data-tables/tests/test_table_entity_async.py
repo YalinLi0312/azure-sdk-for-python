@@ -1719,8 +1719,8 @@ class TestTableEntityAsync(AzureRecordedTestCase, AsyncTableTestCase):
                 tables_primary_storage_account_key,
                 self.table_name,
                 permission=TableSasPermissions(read=True),
-                expiry=datetime.utcnow() + timedelta(hours=1),
-                start=datetime.utcnow() - timedelta(minutes=1),
+                expiry=datetime.now(timezone.utc) + timedelta(hours=1),
+                start=datetime.now(timezone.utc) - timedelta(minutes=1),
             )
 
             # Act
@@ -1751,8 +1751,8 @@ class TestTableEntityAsync(AzureRecordedTestCase, AsyncTableTestCase):
                 tables_primary_storage_account_key,
                 self.table_name,
                 permission=TableSasPermissions(add=True),
-                expiry=datetime.utcnow() + timedelta(hours=1),
-                start=datetime.utcnow() - timedelta(minutes=1),
+                expiry=datetime.now(timezone.utc) + timedelta(hours=1),
+                start=datetime.now(timezone.utc) - timedelta(minutes=1),
             )
 
             # Act
@@ -1783,7 +1783,7 @@ class TestTableEntityAsync(AzureRecordedTestCase, AsyncTableTestCase):
                 tables_primary_storage_account_key,
                 self.table_name,
                 permission=TableSasPermissions(add=True),
-                expiry=datetime.utcnow() + timedelta(hours=1),
+                expiry=datetime.now(timezone.utc) + timedelta(hours=1),
                 start_pk="test",
                 start_rk="test1",
                 end_pk="test",
@@ -1817,7 +1817,7 @@ class TestTableEntityAsync(AzureRecordedTestCase, AsyncTableTestCase):
                 tables_primary_storage_account_key,
                 self.table_name,
                 permission=TableSasPermissions(add=True),
-                expiry=datetime.utcnow() + timedelta(hours=1),
+                expiry=datetime.now(timezone.utc) + timedelta(hours=1),
                 start_pk="test",
                 start_rk="test1",
                 end_pk="test",
@@ -1851,7 +1851,7 @@ class TestTableEntityAsync(AzureRecordedTestCase, AsyncTableTestCase):
                 tables_primary_storage_account_key,
                 self.table_name,
                 permission=TableSasPermissions(update=True),
-                expiry=datetime.utcnow() + timedelta(hours=1),
+                expiry=datetime.now(timezone.utc) + timedelta(hours=1),
             )
 
             # Act
@@ -1884,7 +1884,7 @@ class TestTableEntityAsync(AzureRecordedTestCase, AsyncTableTestCase):
                 tables_primary_storage_account_key,
                 self.table_name,
                 permission=TableSasPermissions(delete=True),
-                expiry=datetime.utcnow() + timedelta(hours=1),
+                expiry=datetime.now(timezone.utc) + timedelta(hours=1),
             )
 
             # Act
@@ -1916,8 +1916,8 @@ class TestTableEntityAsync(AzureRecordedTestCase, AsyncTableTestCase):
                 tables_primary_storage_account_key,
                 self.table_name.upper(),
                 permission=TableSasPermissions(read=True),
-                expiry=datetime.utcnow() + timedelta(hours=1),
-                start=datetime.utcnow() - timedelta(minutes=1),
+                expiry=datetime.now(timezone.utc) + timedelta(hours=1),
+                start=datetime.now(timezone.utc) - timedelta(minutes=1),
             )
 
             # Act

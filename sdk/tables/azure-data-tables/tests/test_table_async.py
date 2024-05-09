@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See License.txt in the project root for
 # license information.
 # --------------------------------------------------------------------------
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -391,8 +391,8 @@ class TestTableAsync(AzureRecordedTestCase, AsyncTableTestCase):
                 tables_primary_storage_account_key,
                 resource_types=ResourceTypes(object=True),
                 permission=AccountSasPermissions(read=True),
-                expiry=datetime.utcnow() + timedelta(hours=1),
-                start=datetime.utcnow() - timedelta(minutes=1),
+                expiry=datetime.now(timezone.utc) + timedelta(hours=1),
+                start=datetime.now(timezone.utc) - timedelta(minutes=1),
             )
 
             token = AzureSasCredential(token)

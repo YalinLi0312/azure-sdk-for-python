@@ -8,7 +8,7 @@ import platform
 import os
 import time
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from devtools_testutils import AzureRecordedTestCase, recorded_by_proxy
 
 from azure.data.tables import (
@@ -270,7 +270,7 @@ class TestTableClient(AzureRecordedTestCase, TableTestCase):
             tables_primary_storage_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         with TableClient.from_table_url(
@@ -325,7 +325,7 @@ class TestTableClient(AzureRecordedTestCase, TableTestCase):
             tables_primary_storage_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
         name_filter = "TableName eq '{}'".format(table_name)
         conn_str = f"AccountName={tables_storage_account_name};AccountKey={tables_primary_storage_account_key.named_key.key};EndpointSuffix=core.windows.net"
@@ -360,7 +360,7 @@ class TestTableClient(AzureRecordedTestCase, TableTestCase):
             tables_primary_storage_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         with TableClient(base_url, table_name, credential=AzureSasCredential(sas_token)) as client:
@@ -409,7 +409,7 @@ class TestTableClient(AzureRecordedTestCase, TableTestCase):
             tables_primary_storage_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
         name_filter = "TableName eq '{}'".format(table_name)
 
@@ -442,7 +442,7 @@ class TestTableClient(AzureRecordedTestCase, TableTestCase):
             tables_primary_storage_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         with TableClient(base_url, table_name, credential=default_azure_credential) as client:
@@ -494,7 +494,7 @@ class TestTableClient(AzureRecordedTestCase, TableTestCase):
             tables_primary_storage_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         with TableServiceClient(base_url, credential=default_azure_credential) as client:
@@ -523,7 +523,7 @@ class TestTableClient(AzureRecordedTestCase, TableTestCase):
             tables_primary_storage_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),  # full permission
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         with pytest.raises(ValueError) as ex:
@@ -564,7 +564,7 @@ class TestTableClient(AzureRecordedTestCase, TableTestCase):
             tables_primary_storage_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         with pytest.raises(ValueError) as ex:

@@ -69,7 +69,7 @@ class TableAuthSamples(object):
     def authentication_by_shared_access_signature(self):
         print("Instantiate a TableServiceClient using a shared access signature")
         # [START auth_from_sas]
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         from azure.data.tables import TableServiceClient, generate_account_sas, ResourceTypes, AccountSasPermissions
         from azure.core.credentials import AzureNamedKeyCredential, AzureSasCredential
 
@@ -79,7 +79,7 @@ class TableAuthSamples(object):
             credential,
             resource_types=ResourceTypes(service=True),
             permission=AccountSasPermissions(read=True),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         with TableServiceClient(

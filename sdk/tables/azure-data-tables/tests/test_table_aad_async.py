@@ -6,7 +6,7 @@
 # license information.
 # --------------------------------------------------------------------------
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 
 from devtools_testutils import AzureRecordedTestCase, set_custom_default_matcher
 from devtools_testutils.aio import recorded_by_proxy_async
@@ -189,7 +189,7 @@ class TestTableAADAsync(AzureRecordedTestCase, AsyncTableTestCase):
             entity["test2"] = "value"
             entity["test3"] = 3
             entity["test4"] = EntityProperty(1234567890, EdmType.INT32)
-            entity["test5"] = datetime.utcnow()
+            entity["test5"] = datetime.now(timezone.utc)
 
             await self.table.create_entity(entity)
             entity["RowKey"] = "batch_all_operations_together-2"

@@ -6,7 +6,7 @@
 import pytest
 import platform
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from devtools_testutils import AzureRecordedTestCase
 from devtools_testutils.aio import recorded_by_proxy_async
 
@@ -203,7 +203,7 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
             tables_primary_cosmos_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         async with TableClient.from_table_url(
@@ -254,7 +254,7 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
             tables_primary_cosmos_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
         name_filter = f"TableName eq '{table_name}'"
         conn_str = f"AccountName={tables_cosmos_account_name};AccountKey={tables_primary_cosmos_account_key.named_key.key};EndpointSuffix=cosmos.azure.com"
@@ -290,7 +290,7 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
             tables_primary_cosmos_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         async with TableClient(base_url, table_name, credential=AzureSasCredential(sas_token)) as client:
@@ -345,7 +345,7 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
             tables_primary_cosmos_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
         name_filter = f"TableName eq '{table_name}'"
 
@@ -385,7 +385,7 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
             tables_primary_cosmos_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         async with TableClient(base_url, table_name, credential=default_azure_credential) as client:
@@ -430,7 +430,7 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
             tables_primary_cosmos_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         async with TableServiceClient(base_url, credential=default_azure_credential) as client:
@@ -455,7 +455,7 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
             tables_primary_cosmos_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         with pytest.raises(ValueError) as ex:
@@ -496,7 +496,7 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
             tables_primary_cosmos_account_key,
             resource_types=ResourceTypes.from_string("sco"),
             permission=AccountSasPermissions.from_string("rwdlacu"),
-            expiry=datetime.utcnow() + timedelta(hours=1),
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
         )
 
         with pytest.raises(ValueError) as ex:

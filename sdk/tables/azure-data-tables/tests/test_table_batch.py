@@ -5,7 +5,7 @@
 # Licensed under the MIT License. See License.txt in the project root for
 # license information.
 # --------------------------------------------------------------------------
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import pytest
 from functools import partial
@@ -58,7 +58,7 @@ class TestTableBatch(AzureRecordedTestCase, TableTestCase):
             entity["test2"] = "value"
             entity["test3"] = 3
             entity["test4"] = EntityProperty(1234567890, EdmType.INT32)
-            entity["test5"] = datetime.utcnow()
+            entity["test5"] = datetime.now(timezone.utc)
 
             batch = [("create", entity)]
             transaction_result = self.table.submit_transaction(batch)
@@ -94,13 +94,13 @@ class TestTableBatch(AzureRecordedTestCase, TableTestCase):
             entity["test2"] = "value"
             entity["test3"] = 3
             entity["test4"] = EntityProperty(1234567890, EdmType.INT32)
-            entity["test5"] = datetime.utcnow()
+            entity["test5"] = datetime.now(timezone.utc)
 
             resp = self.table.create_entity(entity)
             assert resp is not None
 
             entity["test3"] = 5
-            entity["test5"] = datetime.utcnow()
+            entity["test5"] = datetime.now(timezone.utc)
 
             batch = [("update", entity, {"mode": UpdateMode.MERGE})]
             transaction_result = self.table.submit_transaction(batch)
@@ -134,7 +134,7 @@ class TestTableBatch(AzureRecordedTestCase, TableTestCase):
             entity["test2"] = "value"
             entity["test3"] = 3
             entity["test4"] = EntityProperty(1234567890, EdmType.INT32)
-            entity["test5"] = datetime.utcnow()
+            entity["test5"] = datetime.now(timezone.utc)
             entity["test6"] = (2**40, "Edm.Int64")
             self.table.create_entity(entity)
 
@@ -176,7 +176,7 @@ class TestTableBatch(AzureRecordedTestCase, TableTestCase):
             entity["test2"] = "value"
             entity["test3"] = 3
             entity["test4"] = EntityProperty(1234567890, EdmType.INT32)
-            entity["test5"] = datetime.utcnow()
+            entity["test5"] = datetime.now(timezone.utc)
             self.table.create_entity(entity)
 
             resp_entity = self.table.get_entity(partition_key="001", row_key="batch_merge")
@@ -347,7 +347,7 @@ class TestTableBatch(AzureRecordedTestCase, TableTestCase):
             entity["test2"] = "value"
             entity["test3"] = 3
             entity["test4"] = EntityProperty(1234567890, EdmType.INT32)
-            entity["test5"] = datetime.utcnow()
+            entity["test5"] = datetime.now(timezone.utc)
 
             batch = [("upsert", entity, {"mode": UpdateMode.REPLACE})]
             transaction_result = self.table.submit_transaction(batch)
@@ -382,7 +382,7 @@ class TestTableBatch(AzureRecordedTestCase, TableTestCase):
             entity["test2"] = "value"
             entity["test3"] = 3
             entity["test4"] = EntityProperty(1234567890, EdmType.INT32)
-            entity["test5"] = datetime.utcnow()
+            entity["test5"] = datetime.now(timezone.utc)
 
             batch = [("upsert", entity, {"mode": UpdateMode.MERGE})]
             transaction_result = self.table.submit_transaction(batch)
@@ -417,7 +417,7 @@ class TestTableBatch(AzureRecordedTestCase, TableTestCase):
             entity["test2"] = "value"
             entity["test3"] = 3
             entity["test4"] = EntityProperty(1234567890, EdmType.INT32)
-            entity["test5"] = datetime.utcnow()
+            entity["test5"] = datetime.now(timezone.utc)
             self.table.create_entity(entity)
 
             entity = self.table.get_entity(partition_key="001", row_key="batch_delete")
@@ -494,7 +494,7 @@ class TestTableBatch(AzureRecordedTestCase, TableTestCase):
             entity["test2"] = "value"
             entity["test3"] = 3
             entity["test4"] = EntityProperty(1234567890, EdmType.INT32)
-            entity["test5"] = datetime.utcnow()
+            entity["test5"] = datetime.now(timezone.utc)
 
             self.table.create_entity(entity)
             entity["RowKey"] = "batch_all_operations_together-2"
@@ -573,7 +573,7 @@ class TestTableBatch(AzureRecordedTestCase, TableTestCase):
             entity["test2"] = "value"
             entity["test3"] = 3
             entity["test4"] = EntityProperty(1234567890, EdmType.INT32)
-            entity["test5"] = datetime.utcnow()
+            entity["test5"] = datetime.now(timezone.utc)
 
             batch = []
             batch.append(("upsert", entity.copy()))
@@ -825,8 +825,8 @@ class TestTableBatch(AzureRecordedTestCase, TableTestCase):
                 tables_primary_storage_account_key,
                 self.table_name,
                 permission=TableSasPermissions(add=True, read=True, update=True, delete=True),
-                expiry=datetime.utcnow() + timedelta(hours=1),
-                start=datetime.utcnow() - timedelta(minutes=1),
+                expiry=datetime.now(timezone.utc) + timedelta(hours=1),
+                start=datetime.now(timezone.utc) - timedelta(minutes=1),
             )
             token = AzureSasCredential(token)
 

@@ -108,7 +108,7 @@ with TableServiceClient.from_connection_string(conn_str=connection_string) as ta
 To use a [shared access signature (SAS) token][azure_sas_token], provide the token as a string. If your account URL includes the SAS token, omit the credential parameter. You can generate a SAS token from the Azure Portal under [Shared access signature](https://docs.microsoft.com/rest/api/storageservices/create-service-sas) or use one of the `generate_*_sas()` functions to create a sas token for the account or table:
 
 ```python
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from azure.data.tables import TableServiceClient, generate_account_sas, ResourceTypes, AccountSasPermissions
 from azure.core.credentials import AzureNamedKeyCredential, AzureSasCredential
 
@@ -118,7 +118,7 @@ sas_token = generate_account_sas(
     credential,
     resource_types=ResourceTypes(service=True),
     permission=AccountSasPermissions(read=True),
-    expiry=datetime.utcnow() + timedelta(hours=1),
+    expiry=datetime.now(timezone.utc) + timedelta(hours=1),
 )
 
 with TableServiceClient(

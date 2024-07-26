@@ -288,7 +288,7 @@ def build_azure_app_configuration_put_key_value_request(  # pylint: disable=name
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    content_type_header: Optional[str] = kwargs.pop("content_type_header", _headers.pop("Content-Type", None))
+    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
     accept = _headers.pop("Accept", None)
 
@@ -306,8 +306,8 @@ def build_azure_app_configuration_put_key_value_request(  # pylint: disable=name
         _params["label"] = _SERIALIZER.query("label", label, "str")
 
     # Construct headers
-    if content_type_header is not None:
-        _headers["Content-Type"] = _SERIALIZER.header("content_type_header", content_type_header, "str")
+    if content_type is not None:
+        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
     if sync_token is not None:
         _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
     if accept is not None:
@@ -547,7 +547,7 @@ def build_azure_app_configuration_create_snapshot_request(  # pylint: disable=na
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    content_type_header: Optional[str] = kwargs.pop("content_type_header", _headers.pop("Content-Type", None))
+    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
     accept = _headers.pop("Accept", None)
 
@@ -563,8 +563,8 @@ def build_azure_app_configuration_create_snapshot_request(  # pylint: disable=na
     _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
 
     # Construct headers
-    if content_type_header is not None:
-        _headers["Content-Type"] = _SERIALIZER.header("content_type_header", content_type_header, "str")
+    if content_type is not None:
+        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
     if sync_token is not None:
         _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
     if accept is not None:
@@ -584,7 +584,7 @@ def build_azure_app_configuration_update_snapshot_request(  # pylint: disable=na
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    content_type_header: Optional[str] = kwargs.pop("content_type_header", _headers.pop("Content-Type", None))
+    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
     accept = _headers.pop("Accept", None)
 
@@ -600,8 +600,8 @@ def build_azure_app_configuration_update_snapshot_request(  # pylint: disable=na
     _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
 
     # Construct headers
-    if content_type_header is not None:
-        _headers["Content-Type"] = _SERIALIZER.header("content_type_header", content_type_header, "str")
+    if content_type is not None:
+        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
     if sync_token is not None:
         _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
     if accept is not None:
@@ -1509,7 +1509,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         key: str,
         entity: Optional[_models.KeyValue] = None,
         *,
-        content_type_header: str,
+        content_type: str,
         label: Optional[str] = None,
         sync_token: Optional[str] = None,
         etag: Optional[str] = None,
@@ -1522,7 +1522,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         key: str,
         entity: Optional[JSON] = None,
         *,
-        content_type_header: str,
+        content_type: str,
         label: Optional[str] = None,
         sync_token: Optional[str] = None,
         etag: Optional[str] = None,
@@ -1535,7 +1535,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         key: str,
         entity: Optional[IO[bytes]] = None,
         *,
-        content_type_header: str,
+        content_type: str,
         label: Optional[str] = None,
         sync_token: Optional[str] = None,
         etag: Optional[str] = None,
@@ -1626,7 +1626,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
         _params = kwargs.pop("params", {}) or {}
 
-        content_type_header: Optional[str] = kwargs.pop("content_type_header", _headers.pop("Content-Type", None))
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
         cls: ClsType[_models.KeyValue] = kwargs.pop("cls", None)
 
         content_type = content_type or "application/json"
@@ -1645,7 +1645,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
             sync_token=sync_token,
             etag=etag,
             match_condition=match_condition,
-            content_type_header=content_type_header,
+            content_type=content_type,
             api_version=self._config.api_version,
             content=_content,
             headers=_headers,
@@ -2336,7 +2336,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
         _params = kwargs.pop("params", {}) or {}
 
-        content_type_header: Optional[str] = kwargs.pop("content_type_header", _headers.pop("Content-Type", None))
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
         cls: ClsType[Iterator[bytes]] = kwargs.pop("cls", None)
 
         content_type = content_type or "application/json"
@@ -2349,7 +2349,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         _request = build_azure_app_configuration_create_snapshot_request(
             name=name,
             sync_token=sync_token,
-            content_type_header=content_type_header,
+            content_type=content_type,
             api_version=self._config.api_version,
             content=_content,
             headers=_headers,
@@ -2392,13 +2392,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
 
     @overload
     def begin_create_snapshot(
-        self,
-        name: str,
-        entity: _models.Snapshot,
-        *,
-        content_type_header: str,
-        sync_token: Optional[str] = None,
-        **kwargs: Any
+        self, name: str, entity: _models.Snapshot, *, content_type: str, sync_token: Optional[str] = None, **kwargs: Any
     ) -> LROPoller[_models.Snapshot]:
         """Creates a key-value snapshot.
 
@@ -2408,9 +2402,9 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         :type name: str
         :param entity: The key-value snapshot to create. Required.
         :type entity: ~azure.appconfiguration.models.Snapshot
-        :keyword content_type_header: Body Parameter content-type. Content type parameter for JSON
-         body. Required.
-        :paramtype content_type_header: str
+        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
+         Required.
+        :paramtype content_type: str
         :keyword sync_token: Used to guarantee real-time consistency between requests. Default value is
          None.
         :paramtype sync_token: str
@@ -2475,7 +2469,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
 
     @overload
     def begin_create_snapshot(
-        self, name: str, entity: JSON, *, content_type_header: str, sync_token: Optional[str] = None, **kwargs: Any
+        self, name: str, entity: JSON, *, content_type: str, sync_token: Optional[str] = None, **kwargs: Any
     ) -> LROPoller[_models.Snapshot]:
         """Creates a key-value snapshot.
 
@@ -2485,9 +2479,9 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         :type name: str
         :param entity: The key-value snapshot to create. Required.
         :type entity: JSON
-        :keyword content_type_header: Body Parameter content-type. Content type parameter for JSON
-         body. Required.
-        :paramtype content_type_header: str
+        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
+         Required.
+        :paramtype content_type: str
         :keyword sync_token: Used to guarantee real-time consistency between requests. Default value is
          None.
         :paramtype sync_token: str
@@ -2527,7 +2521,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
 
     @overload
     def begin_create_snapshot(
-        self, name: str, entity: IO[bytes], *, content_type_header: str, sync_token: Optional[str] = None, **kwargs: Any
+        self, name: str, entity: IO[bytes], *, content_type: str, sync_token: Optional[str] = None, **kwargs: Any
     ) -> LROPoller[_models.Snapshot]:
         """Creates a key-value snapshot.
 
@@ -2537,10 +2531,10 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         :type name: str
         :param entity: The key-value snapshot to create. Required.
         :type entity: IO[bytes]
-        :keyword content_type_header: Body Parameter content-type. Content type parameter for binary
-         body. Known values are: 'application/vnd.microsoft.appconfig.snapshot+json',
-         'application/json'. Required.
-        :paramtype content_type_header: str
+        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
+         Known values are: 'application/vnd.microsoft.appconfig.snapshot+json', 'application/json'.
+         Required.
+        :paramtype content_type: str
         :keyword sync_token: Used to guarantee real-time consistency between requests. Default value is
          None.
         :paramtype sync_token: str
@@ -2660,7 +2654,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
         _params = kwargs.pop("params", {}) or {}
 
-        content_type_header: Optional[str] = kwargs.pop("content_type_header", _headers.pop("Content-Type", None))
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
         cls: ClsType[_models.Snapshot] = kwargs.pop("cls", None)
         polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
         lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
@@ -2670,7 +2664,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
                 name=name,
                 entity=entity,
                 sync_token=sync_token,
-                content_type_header=content_type_header,
+                content_type=content_type,
                 cls=lambda x, y, z: x,
                 headers=_headers,
                 params=_params,
@@ -2724,7 +2718,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         name: str,
         entity: _models._models.SnapshotUpdateParameters,
         *,
-        content_type_header: str,
+        content_type: str,
         sync_token: Optional[str] = None,
         etag: Optional[str] = None,
         match_condition: Optional[MatchConditions] = None,
@@ -2736,7 +2730,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         name: str,
         entity: JSON,
         *,
-        content_type_header: str,
+        content_type: str,
         sync_token: Optional[str] = None,
         etag: Optional[str] = None,
         match_condition: Optional[MatchConditions] = None,
@@ -2748,7 +2742,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         name: str,
         entity: IO[bytes],
         *,
-        content_type_header: str,
+        content_type: str,
         sync_token: Optional[str] = None,
         etag: Optional[str] = None,
         match_condition: Optional[MatchConditions] = None,
@@ -2838,7 +2832,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
         _params = kwargs.pop("params", {}) or {}
 
-        content_type_header: Optional[str] = kwargs.pop("content_type_header", _headers.pop("Content-Type", None))
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
         cls: ClsType[_models.Snapshot] = kwargs.pop("cls", None)
 
         content_type = content_type or "application/json"
@@ -2853,7 +2847,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
             sync_token=sync_token,
             etag=etag,
             match_condition=match_condition,
-            content_type_header=content_type_header,
+            content_type=content_type,
             api_version=self._config.api_version,
             content=_content,
             headers=_headers,

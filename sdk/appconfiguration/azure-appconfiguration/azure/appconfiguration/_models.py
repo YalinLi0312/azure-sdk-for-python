@@ -14,7 +14,7 @@ from azure.core.async_paging import AsyncPageIterator
 from ._generated._serialization import Model
 from ._generated.models import (
     KeyValue,
-    KeyValueFilter,
+    KeyValueFilter as ConfigurationSettingsFilter,
     Snapshot as GeneratedConfigurationSnapshot,
     SnapshotStatus,
 )
@@ -387,25 +387,6 @@ class SecretReferenceConfigurationSetting(ConfigurationSetting):
         )
 
 
-class ConfigurationSettingsFilter:
-    """Enables filtering of configuration settings."""
-
-    key: str
-    """Filters configuration settings by their key field. Required."""
-    label: Optional[str]
-    """Filters configuration settings by their label field."""
-
-    def __init__(self, *, key: str, label: Optional[str] = None) -> None:
-        """
-        :keyword key: Filters configuration settings by their key field. Required.
-        :paramtype key: str
-        :keyword label: Filters configuration settings by their label field.
-        :paramtype label: str or None
-        """
-        self.key = key
-        self.label = label
-
-
 class ConfigurationSnapshot:  # pylint: disable=too-many-instance-attributes
     """A point-in-time snapshot of configuration settings."""
 
@@ -535,7 +516,7 @@ class ConfigurationSnapshot:  # pylint: disable=too-many-instance-attributes
     def _to_generated(self) -> GeneratedConfigurationSnapshot:
         config_setting_filters = []
         for kv_filter in self.filters:
-            config_setting_filters.append(KeyValueFilter(key=kv_filter.key, label=kv_filter.label))
+            config_setting_filters.append(ConfigurationSettingsFilter(key=kv_filter.key, label=kv_filter.label))
         return GeneratedConfigurationSnapshot(
             filters=config_setting_filters,
             composition_type=self.composition_type,

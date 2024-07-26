@@ -11,7 +11,7 @@ from typing import Any, TYPE_CHECKING, Union
 from azure.core.credentials import AzureKeyCredential
 from azure.core.pipeline import policies
 
-from ._version import VERSION
+from .._version import VERSION
 
 if TYPE_CHECKING:
     # pylint: disable=unused-import,ungrouped-imports

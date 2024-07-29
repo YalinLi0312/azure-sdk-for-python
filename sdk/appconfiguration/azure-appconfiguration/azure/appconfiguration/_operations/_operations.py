@@ -1486,11 +1486,11 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
             raise HttpResponseError(response=response, model=error)
 
         response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
-        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
         response_headers["x-ms-client-request-id"] = self._deserialize(
             "str", response.headers.get("x-ms-client-request-id")
         )
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
+        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
         response_headers["Content-Type"] = self._deserialize("str", response.headers.get("Content-Type"))
 
         if _stream:

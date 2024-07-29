@@ -170,8 +170,6 @@ class Key(_model_base.Model):
 class KeyValue(_model_base.Model):
     """A key-value pair representing application settings.
 
-    Readonly variables are only populated by the server, and will be ignored when sending a request.
-
 
     :ivar key: The key of the key-value. Required.
     :vartype key: str
@@ -191,7 +189,7 @@ class KeyValue(_model_base.Model):
     :vartype etag: str
     """
 
-    key: str = rest_field(visibility=["read"])
+    key: str = rest_field()
     """The key of the key-value. Required."""
     label: Optional[str] = rest_field()
     """The label the key-value belongs to."""
@@ -212,6 +210,7 @@ class KeyValue(_model_base.Model):
     def __init__(
         self,
         *,
+        key: str,
         label: Optional[str] = None,
         content_type: Optional[str] = None,
         value: Optional[str] = None,
@@ -383,7 +382,7 @@ class Snapshot(_model_base.Model):  # pylint: disable=too-many-instance-attribut
     :vartype etag: str
     """
 
-    name: str = rest_field(visibility=["read"])
+    name: str = rest_field()
     """The name of the snapshot. Required."""
     status: Optional[Union[str, "_models.SnapshotStatus"]] = rest_field(visibility=["read"])
     """The current status of the snapshot. Known values are: \"provisioning\", \"ready\",
@@ -417,6 +416,7 @@ class Snapshot(_model_base.Model):  # pylint: disable=too-many-instance-attribut
     def __init__(
         self,
         *,
+        name: str,
         filters: List["_models.KeyValueFilter"],
         composition_type: Optional[Union[str, "_models.CompositionType"]] = None,
         retention_period: Optional[int] = None,

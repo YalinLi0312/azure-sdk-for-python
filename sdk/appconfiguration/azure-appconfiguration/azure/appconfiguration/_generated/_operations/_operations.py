@@ -1486,11 +1486,11 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
             raise HttpResponseError(response=response, model=error)
 
         response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
-        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
         response_headers["x-ms-client-request-id"] = self._deserialize(
             "str", response.headers.get("x-ms-client-request-id")
         )
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
+        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
         response_headers["Content-Type"] = self._deserialize("str", response.headers.get("Content-Type"))
 
         if _stream:
@@ -1635,7 +1635,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
             _content = entity
         else:
             if entity is not None:
-                _content = json.dumps(entity, cls=SdkJSONEncoder)  # type: ignore
+                _content = json.dumps(entity, cls=SdkJSONEncoder, exclude_readonly=True)  # type: ignore
             else:
                 _content = None
 
@@ -2344,7 +2344,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         if isinstance(entity, (IOBase, bytes)):
             _content = entity
         else:
-            _content = json.dumps(entity, cls=SdkJSONEncoder)  # type: ignore
+            _content = json.dumps(entity, cls=SdkJSONEncoder, exclude_readonly=True)  # type: ignore
 
         _request = build_azure_app_configuration_create_snapshot_request(
             name=name,
@@ -2840,7 +2840,7 @@ class AzureAppConfigurationClientOperationsMixin(  # pylint: disable=too-many-pu
         if isinstance(entity, (IOBase, bytes)):
             _content = entity
         else:
-            _content = json.dumps(entity, cls=SdkJSONEncoder)  # type: ignore
+            _content = json.dumps(entity, cls=SdkJSONEncoder, exclude_readonly=True)  # type: ignore
 
         _request = build_azure_app_configuration_update_snapshot_request(
             name=name,

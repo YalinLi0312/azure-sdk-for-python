@@ -17,6 +17,102 @@ if TYPE_CHECKING:
     from .. import models as _models
 
 
+class AzureCoreFoundationsError(_serialization.Model):
+    """The error object.
+
+    All required parameters must be populated in order to send to server.
+
+    :ivar code: One of a server-defined set of error codes. Required.
+    :vartype code: str
+    :ivar message: A human-readable representation of the error. Required.
+    :vartype message: str
+    :ivar target: The target of the error.
+    :vartype target: str
+    :ivar details: An array of details about specific errors that led to this reported error.
+    :vartype details: list[~azure.appconfiguration.models.AzureCoreFoundationsError]
+    :ivar innererror: An object containing more specific information than the current object about
+     the error.
+    :vartype innererror: ~azure.appconfiguration.models.AzureCoreFoundationsInnerError
+    """
+
+    _validation = {
+        "code": {"required": True},
+        "message": {"required": True},
+    }
+
+    _attribute_map = {
+        "code": {"key": "code", "type": "str"},
+        "message": {"key": "message", "type": "str"},
+        "target": {"key": "target", "type": "str"},
+        "details": {"key": "details", "type": "[AzureCoreFoundationsError]"},
+        "innererror": {"key": "innererror", "type": "AzureCoreFoundationsInnerError"},
+    }
+
+    def __init__(
+        self,
+        *,
+        code: str,
+        message: str,
+        target: Optional[str] = None,
+        details: Optional[List["_models.AzureCoreFoundationsError"]] = None,
+        innererror: Optional["_models.AzureCoreFoundationsInnerError"] = None,
+        **kwargs: Any
+    ) -> None:
+        """
+        :keyword code: One of a server-defined set of error codes. Required.
+        :paramtype code: str
+        :keyword message: A human-readable representation of the error. Required.
+        :paramtype message: str
+        :keyword target: The target of the error.
+        :paramtype target: str
+        :keyword details: An array of details about specific errors that led to this reported error.
+        :paramtype details: list[~azure.appconfiguration.models.AzureCoreFoundationsError]
+        :keyword innererror: An object containing more specific information than the current object
+         about the error.
+        :paramtype innererror: ~azure.appconfiguration.models.AzureCoreFoundationsInnerError
+        """
+        super().__init__(**kwargs)
+        self.code = code
+        self.message = message
+        self.target = target
+        self.details = details
+        self.innererror = innererror
+
+
+class AzureCoreFoundationsInnerError(_serialization.Model):
+    """An object containing more specific information about the error. As per Microsoft One API
+    guidelines -
+    https://github.com/Microsoft/api-guidelines/blob/vNext/Guidelines.md#7102-error-condition-responses.
+
+    :ivar code: One of a server-defined set of error codes.
+    :vartype code: str
+    :ivar innererror: Inner error.
+    :vartype innererror: ~azure.appconfiguration.models.AzureCoreFoundationsInnerError
+    """
+
+    _attribute_map = {
+        "code": {"key": "code", "type": "str"},
+        "innererror": {"key": "innererror", "type": "AzureCoreFoundationsInnerError"},
+    }
+
+    def __init__(
+        self,
+        *,
+        code: Optional[str] = None,
+        innererror: Optional["_models.AzureCoreFoundationsInnerError"] = None,
+        **kwargs: Any
+    ) -> None:
+        """
+        :keyword code: One of a server-defined set of error codes.
+        :paramtype code: str
+        :keyword innererror: Inner error.
+        :paramtype innererror: ~azure.appconfiguration.models.AzureCoreFoundationsInnerError
+        """
+        super().__init__(**kwargs)
+        self.code = code
+        self.innererror = innererror
+
+
 class Error(_serialization.Model):
     """Azure App Configuration error object.
 
@@ -70,102 +166,20 @@ class Error(_serialization.Model):
         self.status = status
 
 
-class ErrorDetail(_serialization.Model):
-    """The details of an error.
-
-    All required parameters must be populated in order to send to server.
-
-    :ivar code: One of a server-defined set of error codes. Required.
-    :vartype code: str
-    :ivar message: A human-readable representation of the error. Required.
-    :vartype message: str
-    :ivar details: An array of details about specific errors that led to this reported error.
-    :vartype details: list[~azure.appconfiguration.models.ErrorDetail]
-    :ivar innererror: An object containing more specific information than the current object about
-     the error.
-    :vartype innererror: ~azure.appconfiguration.models.InnerError
-    """
-
-    _validation = {
-        "code": {"required": True},
-        "message": {"required": True},
-    }
-
-    _attribute_map = {
-        "code": {"key": "code", "type": "str"},
-        "message": {"key": "message", "type": "str"},
-        "details": {"key": "details", "type": "[ErrorDetail]"},
-        "innererror": {"key": "innererror", "type": "InnerError"},
-    }
-
-    def __init__(
-        self,
-        *,
-        code: str,
-        message: str,
-        details: Optional[List["_models.ErrorDetail"]] = None,
-        innererror: Optional["_models.InnerError"] = None,
-        **kwargs: Any
-    ) -> None:
-        """
-        :keyword code: One of a server-defined set of error codes. Required.
-        :paramtype code: str
-        :keyword message: A human-readable representation of the error. Required.
-        :paramtype message: str
-        :keyword details: An array of details about specific errors that led to this reported error.
-        :paramtype details: list[~azure.appconfiguration.models.ErrorDetail]
-        :keyword innererror: An object containing more specific information than the current object
-         about the error.
-        :paramtype innererror: ~azure.appconfiguration.models.InnerError
-        """
-        super().__init__(**kwargs)
-        self.code = code
-        self.message = message
-        self.details = details
-        self.innererror = innererror
-
-
-class InnerError(_serialization.Model):
-    """An object containing specific information about an error.
-
-    :ivar code: One of a server-defined set of error codes.
-    :vartype code: str
-    :ivar innererror: An object containing more specific information than the current object about
-     the error.
-    :vartype innererror: ~azure.appconfiguration.models.InnerError
-    """
-
-    _attribute_map = {
-        "code": {"key": "code", "type": "str"},
-        "innererror": {"key": "innererror", "type": "InnerError"},
-    }
-
-    def __init__(
-        self, *, code: Optional[str] = None, innererror: Optional["_models.InnerError"] = None, **kwargs: Any
-    ) -> None:
-        """
-        :keyword code: One of a server-defined set of error codes.
-        :paramtype code: str
-        :keyword innererror: An object containing more specific information than the current object
-         about the error.
-        :paramtype innererror: ~azure.appconfiguration.models.InnerError
-        """
-        super().__init__(**kwargs)
-        self.code = code
-        self.innererror = innererror
-
-
 class Key(_serialization.Model):
-    """Key.
+    """Keys serve as identifiers for key-values and are used to store and retrieve corresponding
+    values.
 
     Variables are only populated by the server, and will be ignored when sending a request.
 
-    :ivar name: The name of the key.
+    All required parameters must be populated in order to send to server.
+
+    :ivar name: The name of the key. Required.
     :vartype name: str
     """
 
     _validation = {
-        "name": {"readonly": True},
+        "name": {"required": True, "readonly": True},
     }
 
     _attribute_map = {
@@ -207,9 +221,13 @@ class KeyListResult(_serialization.Model):
 
 
 class KeyValue(_serialization.Model):
-    """KeyValue.
+    """A key-value pair representing application settings.
 
-    :ivar key: The key of the key-value.
+    Variables are only populated by the server, and will be ignored when sending a request.
+
+    All required parameters must be populated in order to send to server.
+
+    :ivar key: The key of the key-value. Required.
     :vartype key: str
     :ivar label: The label the key-value belongs to.
     :vartype label: str
@@ -227,6 +245,10 @@ class KeyValue(_serialization.Model):
     :vartype etag: str
     """
 
+    _validation = {
+        "key": {"required": True, "readonly": True},
+    }
+
     _attribute_map = {
         "key": {"key": "key", "type": "str"},
         "label": {"key": "label", "type": "str"},
@@ -241,7 +263,6 @@ class KeyValue(_serialization.Model):
     def __init__(
         self,
         *,
-        key: Optional[str] = None,
         label: Optional[str] = None,
         content_type: Optional[str] = None,
         value: Optional[str] = None,
@@ -252,8 +273,6 @@ class KeyValue(_serialization.Model):
         **kwargs: Any
     ) -> None:
         """
-        :keyword key: The key of the key-value.
-        :paramtype key: str
         :keyword label: The label the key-value belongs to.
         :paramtype label: str
         :keyword content_type: The content type of the value stored within the key-value.
@@ -270,7 +289,7 @@ class KeyValue(_serialization.Model):
         :paramtype etag: str
         """
         super().__init__(**kwargs)
-        self.key = key
+        self.key = None
         self.label = label
         self.content_type = content_type
         self.value = value
@@ -296,7 +315,6 @@ class KeyValueFilter(_serialization.Model):
 
     _validation = {
         "key": {"required": True},
-        "tags": {"unique": True},
     }
 
     _attribute_map = {
@@ -362,26 +380,23 @@ class KeyValueListResult(_serialization.Model):
 
 
 class Label(_serialization.Model):
-    """Label.
-
-    Variables are only populated by the server, and will be ignored when sending a request.
+    """Labels are used to group key-values.
 
     :ivar name: The name of the label.
     :vartype name: str
     """
 
-    _validation = {
-        "name": {"readonly": True},
-    }
-
     _attribute_map = {
         "name": {"key": "name", "type": "str"},
     }
 
-    def __init__(self, **kwargs: Any) -> None:
-        """ """
+    def __init__(self, *, name: Optional[str] = None, **kwargs: Any) -> None:
+        """
+        :keyword name: The name of the label.
+        :paramtype name: str
+        """
         super().__init__(**kwargs)
-        self.name = None
+        self.name = name
 
 
 class LabelListResult(_serialization.Model):
@@ -421,10 +436,10 @@ class OperationDetails(_serialization.Model):
     :vartype id: str
     :ivar status: The current status of the operation. Required. Known values are: "NotStarted",
      "Running", "Succeeded", "Failed", and "Canceled".
-    :vartype status: str or ~azure.appconfiguration.models.State
-    :ivar error: An error, available when the status is ``Failed``\ , describing why the operation
+    :vartype status: str or ~azure.appconfiguration.models.OperationState
+    :ivar error: An error, available when the status is ``Failed``\\ , describing why the operation
      failed.
-    :vartype error: ~azure.appconfiguration.models.ErrorDetail
+    :vartype error: ~azure.appconfiguration.models.AzureCoreFoundationsError
     """
 
     _validation = {
@@ -435,15 +450,15 @@ class OperationDetails(_serialization.Model):
     _attribute_map = {
         "id": {"key": "id", "type": "str"},
         "status": {"key": "status", "type": "str"},
-        "error": {"key": "error", "type": "ErrorDetail"},
+        "error": {"key": "error", "type": "AzureCoreFoundationsError"},
     }
 
     def __init__(
         self,
         *,
         id: str,  # pylint: disable=redefined-builtin
-        status: Union[str, "_models.State"],
-        error: Optional["_models.ErrorDetail"] = None,
+        status: Union[str, "_models.OperationState"],
+        error: Optional["_models.AzureCoreFoundationsError"] = None,
         **kwargs: Any
     ) -> None:
         """
@@ -451,10 +466,11 @@ class OperationDetails(_serialization.Model):
         :paramtype id: str
         :keyword status: The current status of the operation. Required. Known values are: "NotStarted",
          "Running", "Succeeded", "Failed", and "Canceled".
-        :paramtype status: str or ~azure.appconfiguration.models.State
-        :keyword error: An error, available when the status is ``Failed``\ , describing why the
-         operation failed.
-        :paramtype error: ~azure.appconfiguration.models.ErrorDetail
+        :paramtype status: str or ~azure.appconfiguration.models.OperationState
+        :keyword error: An error, available when the status is ``Failed``\\ , describing why the
+         operation
+         failed.
+        :paramtype error: ~azure.appconfiguration.models.AzureCoreFoundationsError
         """
         super().__init__(**kwargs)
         self.id = id
@@ -463,13 +479,13 @@ class OperationDetails(_serialization.Model):
 
 
 class Snapshot(_serialization.Model):  # pylint: disable=too-many-instance-attributes
-    """Snapshot.
+    """A snapshot is a named, immutable subset of an App Configuration store's key-values.
 
     Variables are only populated by the server, and will be ignored when sending a request.
 
     All required parameters must be populated in order to send to server.
 
-    :ivar name: The name of the snapshot.
+    :ivar name: The name of the snapshot. Required.
     :vartype name: str
     :ivar status: The current status of the snapshot. Known values are: "provisioning", "ready",
      "archived", and "failed".
@@ -478,17 +494,20 @@ class Snapshot(_serialization.Model):  # pylint: disable=too-many-instance-attri
      Required.
     :vartype filters: list[~azure.appconfiguration.models.KeyValueFilter]
     :ivar composition_type: The composition type describes how the key-values within the snapshot
-     are composed. The 'key' composition type ensures there are no two key-values containing the
-     same key. The 'key_label' composition type ensures there are no two key-values containing the
-     same key and label. Known values are: "key" and "key_label".
+     are
+     composed. The 'key' composition type ensures there are no two key-values
+     containing the same key. The 'key_label' composition type ensures there are no
+     two key-values containing the same key and label. Known values are: "key" and "key_label".
     :vartype composition_type: str or ~azure.appconfiguration.models.CompositionType
     :ivar created: The time that the snapshot was created.
     :vartype created: ~datetime.datetime
     :ivar expires: The time that the snapshot will expire.
     :vartype expires: ~datetime.datetime
     :ivar retention_period: The amount of time, in seconds, that a snapshot will remain in the
-     archived state before expiring. This property is only writable during the creation of a
-     snapshot. If not specified, the default lifetime of key-value revisions will be used.
+     archived
+     state before expiring. This property is only writable during the creation of a
+     snapshot. If not specified, the default lifetime of key-value revisions will be
+     used.
     :vartype retention_period: int
     :ivar size: The size in bytes of the snapshot.
     :vartype size: int
@@ -501,7 +520,7 @@ class Snapshot(_serialization.Model):  # pylint: disable=too-many-instance-attri
     """
 
     _validation = {
-        "name": {"readonly": True},
+        "name": {"required": True, "readonly": True},
         "status": {"readonly": True},
         "filters": {"required": True, "max_items": 3, "min_items": 1},
         "created": {"readonly": True},
@@ -540,13 +559,16 @@ class Snapshot(_serialization.Model):  # pylint: disable=too-many-instance-attri
          Required.
         :paramtype filters: list[~azure.appconfiguration.models.KeyValueFilter]
         :keyword composition_type: The composition type describes how the key-values within the
-         snapshot are composed. The 'key' composition type ensures there are no two key-values
-         containing the same key. The 'key_label' composition type ensures there are no two key-values
-         containing the same key and label. Known values are: "key" and "key_label".
+         snapshot are
+         composed. The 'key' composition type ensures there are no two key-values
+         containing the same key. The 'key_label' composition type ensures there are no
+         two key-values containing the same key and label. Known values are: "key" and "key_label".
         :paramtype composition_type: str or ~azure.appconfiguration.models.CompositionType
         :keyword retention_period: The amount of time, in seconds, that a snapshot will remain in the
-         archived state before expiring. This property is only writable during the creation of a
-         snapshot. If not specified, the default lifetime of key-value revisions will be used.
+         archived
+         state before expiring. This property is only writable during the creation of a
+         snapshot. If not specified, the default lifetime of key-value revisions will be
+         used.
         :paramtype retention_period: int
         :keyword tags: The tags of the snapshot.
         :paramtype tags: dict[str, str]

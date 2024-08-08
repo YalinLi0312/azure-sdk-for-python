@@ -6,10 +6,13 @@
 # Changes may cause incorrect behavior and will be lost if the code is regenerated.
 # --------------------------------------------------------------------------
 
-from typing import Any, Optional
+from typing import Any, TYPE_CHECKING
 
-from azure.core.credentials import AzureKeyCredential
 from azure.core.pipeline import policies
+
+if TYPE_CHECKING:
+    # pylint: disable=unused-import,ungrouped-imports
+    from azure.core.credentials import TokenCredential
 
 VERSION = "unknown"
 
@@ -21,31 +24,21 @@ class AzureAppConfigurationConfiguration:  # pylint: disable=too-many-instance-a
     attributes.
 
     :param credential: Credential needed for the client to connect to Azure. Required.
-    :type credential: ~azure.core.credentials.AzureKeyCredential
-    :param endpoint: The endpoint of the App Configuration instance to send requests to. Required.
-    :type endpoint: str
-    :param sync_token: Used to guarantee real-time consistency between requests. Default value is
-     None.
-    :type sync_token: str
+    :type credential: ~azure.core.credentials.TokenCredential
     :keyword api_version: Api Version. Default value is "2023-11-01". Note that overriding this
      default value may result in unsupported behavior.
     :paramtype api_version: str
     """
 
-    def __init__(
-        self, credential: AzureKeyCredential, endpoint: str, sync_token: Optional[str] = None, **kwargs: Any
-    ) -> None:
+    def __init__(self, credential: "TokenCredential", **kwargs: Any) -> None:
         api_version: str = kwargs.pop("api_version", "2023-11-01")
 
         if credential is None:
             raise ValueError("Parameter 'credential' must not be None.")
-        if endpoint is None:
-            raise ValueError("Parameter 'endpoint' must not be None.")
 
         self.credential = credential
-        self.endpoint = endpoint
-        self.sync_token = sync_token
         self.api_version = api_version
+        self.credential_scopes = kwargs.pop("credential_scopes", ["https://azconfig.io/.default"])
         kwargs.setdefault("sdk_moniker", "appconfiguration/{}".format(VERSION))
         self.polling_interval = kwargs.get("polling_interval", 30)
         self._configure(**kwargs)
@@ -61,6 +54,6 @@ class AzureAppConfigurationConfiguration:  # pylint: disable=too-many-instance-a
         self.retry_policy = kwargs.get("retry_policy") or policies.RetryPolicy(**kwargs)
         self.authentication_policy = kwargs.get("authentication_policy")
         if self.credential and not self.authentication_policy:
-            self.authentication_policy = policies.AzureKeyCredentialPolicy(
-                self.credential, "Connection String", **kwargs
+            self.authentication_policy = policies.BearerTokenCredentialPolicy(
+                self.credential, *self.credential_scopes, **kwargs
             )

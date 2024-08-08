@@ -15,3 +15,21 @@ enable-xml: true
 vanilla: true
 version-tolerant: false
 ```
+
+### Add itemName for paged operations in generated openapi spec
+``` yaml
+directive:
+  from: swagger-document
+  where: $.paths.*.*
+  transform: >
+    $["x-ms-pageable"].itemName = "items"
+```
+
+### Rename the enum "KeyValueFields" to "ConfigurationSettingFields"
+```yaml
+directive:
+  from: swagger-document
+  where: $.definitions.KeyValueFields
+  transform: >
+    $["x-ms-enum"].name = "ConfigurationSettingFields"
+```

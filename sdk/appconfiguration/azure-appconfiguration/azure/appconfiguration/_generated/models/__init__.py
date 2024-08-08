@@ -6,9 +6,9 @@
 # Changes may cause incorrect behavior and will be lost if the code is regenerated.
 # --------------------------------------------------------------------------
 
+from ._models_py3 import AzureCoreFoundationsError
+from ._models_py3 import AzureCoreFoundationsInnerError
 from ._models_py3 import Error
-from ._models_py3 import ErrorDetail
-from ._models_py3 import InnerError
 from ._models_py3 import Key
 from ._models_py3 import KeyListResult
 from ._models_py3 import KeyValue
@@ -22,19 +22,20 @@ from ._models_py3 import SnapshotListResult
 from ._models_py3 import SnapshotUpdateParameters
 
 from ._azure_app_configuration_enums import CompositionType
+from ._azure_app_configuration_enums import ConfigurationSettingFields
 from ._azure_app_configuration_enums import KeyValueFields
 from ._azure_app_configuration_enums import LabelFields
+from ._azure_app_configuration_enums import OperationState
 from ._azure_app_configuration_enums import SnapshotFields
 from ._azure_app_configuration_enums import SnapshotStatus
-from ._azure_app_configuration_enums import State
 from ._patch import __all__ as _patch_all
 from ._patch import *  # pylint: disable=unused-wildcard-import
 from ._patch import patch_sdk as _patch_sdk
 
 __all__ = [
+    "AzureCoreFoundationsError",
+    "AzureCoreFoundationsInnerError",
     "Error",
-    "ErrorDetail",
-    "InnerError",
     "Key",
     "KeyListResult",
     "KeyValue",
@@ -47,11 +48,12 @@ __all__ = [
     "SnapshotListResult",
     "SnapshotUpdateParameters",
     "CompositionType",
+    "ConfigurationSettingFields",
     "KeyValueFields",
     "LabelFields",
+    "OperationState",
     "SnapshotFields",
     "SnapshotStatus",
-    "State",
 ]
 __all__.extend([p for p in _patch_all if p not in __all__])
 _patch_sdk()

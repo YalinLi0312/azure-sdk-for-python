@@ -2,6 +2,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 # ------------------------------------
+
 """Customize generated code here.
 
 Follow our quickstart for examples: https://aka.ms/azsdk/python/dpcodegen/python/customize
@@ -114,6 +115,7 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigOpGenerated):
                 _request.url = self._client.format_url(_request.url, **path_format_arguments)
             else:
                 # make call to next link with the client's api-version
+
                 _parsed_next_link = urllib.parse.urlparse(next_link)
                 _next_request_params = case_insensitive_dict(
                     {

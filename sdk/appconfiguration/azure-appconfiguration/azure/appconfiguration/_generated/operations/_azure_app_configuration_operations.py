@@ -8,7 +8,7 @@
 # --------------------------------------------------------------------------
 from io import IOBase
 import sys
-from typing import Any, Callable, Dict, IO, Iterable, List, Optional, Type, TypeVar, Union, cast, overload
+from typing import Any, Callable, Dict, IO, Iterable, Iterator, List, Optional, Type, TypeVar, Union, cast, overload
 import urllib.parse
 
 from azure.core.exceptions import (
@@ -17,20 +17,21 @@ from azure.core.exceptions import (
     ResourceExistsError,
     ResourceNotFoundError,
     ResourceNotModifiedError,
+    StreamClosedError,
+    StreamConsumedError,
     map_error,
 )
 from azure.core.paging import ItemPaged
 from azure.core.pipeline import PipelineResponse
-from azure.core.pipeline.transport import HttpResponse
 from azure.core.polling import LROPoller, NoPolling, PollingMethod
 from azure.core.polling.base_polling import LROBasePolling
-from azure.core.rest import HttpRequest
+from azure.core.rest import HttpRequest, HttpResponse
 from azure.core.tracing.decorator import distributed_trace
 from azure.core.utils import case_insensitive_dict
 
 from .. import models as _models
 from .._serialization import Serializer
-from .._vendor import AzureAppConfigurationMixinABC, _convert_request
+from .._vendor import AzureAppConfigurationMixinABC
 
 if sys.version_info >= (3, 9):
     from collections.abc import MutableMapping
@@ -47,23 +48,25 @@ def build_get_keys_request(
     *,
     name: Optional[str] = None,
     after: Optional[str] = None,
-    accept_datetime: Optional[str] = None,
     sync_token: Optional[str] = None,
+    accept_datetime: Optional[str] = None,
     **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.keyset+json, application/problem+json")
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.keyset+json, application/problem+json, application/json"
+    )
 
     # Construct URL
     _url = kwargs.pop("template_url", "/keys")
 
     # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if name is not None:
         _params["name"] = _SERIALIZER.query("name", name, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if after is not None:
         _params["After"] = _SERIALIZER.query("after", after, "str")
 
@@ -80,22 +83,25 @@ def build_get_keys_request(
 def build_check_keys_request(
     *,
     name: Optional[str] = None,
+    sync_token: Optional[str] = None,
     after: Optional[str] = None,
     accept_datetime: Optional[str] = None,
-    sync_token: Optional[str] = None,
+    client_request_id: Optional[str] = None,
     **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop("Accept", "application/json")
+
     # Construct URL
     _url = kwargs.pop("template_url", "/keys")
 
     # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if name is not None:
         _params["name"] = _SERIALIZER.query("name", name, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if after is not None:
         _params["After"] = _SERIALIZER.query("after", after, "str")
 
@@ -104,6 +110,9 @@ def build_check_keys_request(
         _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
     if accept_datetime is not None:
         _headers["Accept-Datetime"] = _SERIALIZER.header("accept_datetime", accept_datetime, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
 
     return HttpRequest(method="HEAD", url=_url, params=_params, headers=_headers, **kwargs)
 
@@ -112,6 +121,7 @@ def build_get_key_values_request(
     *,
     key: Optional[str] = None,
     label: Optional[str] = None,
+    sync_token: Optional[str] = None,
     after: Optional[str] = None,
     accept_datetime: Optional[str] = None,
     select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
@@ -119,24 +129,25 @@ def build_get_key_values_request(
     if_match: Optional[str] = None,
     if_none_match: Optional[str] = None,
     tags: Optional[List[str]] = None,
-    sync_token: Optional[str] = None,
     **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.kvset+json, application/problem+json")
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.kvset+json, application/problem+json, application/json"
+    )
 
     # Construct URL
     _url = kwargs.pop("template_url", "/kv")
 
     # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if key is not None:
         _params["key"] = _SERIALIZER.query("key", key, "str")
     if label is not None:
         _params["label"] = _SERIALIZER.query("label", label, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if after is not None:
         _params["After"] = _SERIALIZER.query("after", after, "str")
     if select is not None:
@@ -164,6 +175,7 @@ def build_check_key_values_request(
     *,
     key: Optional[str] = None,
     label: Optional[str] = None,
+    sync_token: Optional[str] = None,
     after: Optional[str] = None,
     accept_datetime: Optional[str] = None,
     select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
@@ -171,22 +183,24 @@ def build_check_key_values_request(
     if_match: Optional[str] = None,
     if_none_match: Optional[str] = None,
     tags: Optional[List[str]] = None,
-    sync_token: Optional[str] = None,
+    client_request_id: Optional[str] = None,
     **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop("Accept", "application/json")
+
     # Construct URL
     _url = kwargs.pop("template_url", "/kv")
 
     # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if key is not None:
         _params["key"] = _SERIALIZER.query("key", key, "str")
     if label is not None:
         _params["label"] = _SERIALIZER.query("label", label, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if after is not None:
         _params["After"] = _SERIALIZER.query("after", after, "str")
     if select is not None:
@@ -205,6 +219,9 @@ def build_check_key_values_request(
         _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
     if if_none_match is not None:
         _headers["If-None-Match"] = _SERIALIZER.header("if_none_match", if_none_match, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
 
     return HttpRequest(method="HEAD", url=_url, params=_params, headers=_headers, **kwargs)
 
@@ -213,18 +230,21 @@ def build_get_key_value_request(
     key: str,
     *,
     label: Optional[str] = None,
+    select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
+    sync_token: Optional[str] = None,
     accept_datetime: Optional[str] = None,
     if_match: Optional[str] = None,
     if_none_match: Optional[str] = None,
-    select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
-    sync_token: Optional[str] = None,
+    client_request_id: Optional[str] = None,
     **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.kv+json, application/problem+json")
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.kv+json, application/problem+json, application/json"
+    )
 
     # Construct URL
     _url = kwargs.pop("template_url", "/kv/{key}")
@@ -235,9 +255,9 @@ def build_get_key_value_request(
     _url: str = _url.format(**path_format_arguments)  # type: ignore
 
     # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if label is not None:
         _params["label"] = _SERIALIZER.query("label", label, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if select is not None:
         _params["$Select"] = _SERIALIZER.query("select", select, "[str]", div=",")
 
@@ -250,6 +270,8 @@ def build_get_key_value_request(
         _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
     if if_none_match is not None:
         _headers["If-None-Match"] = _SERIALIZER.header("if_none_match", if_none_match, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
     _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
 
     return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
@@ -259,9 +281,10 @@ def build_put_key_value_request(
     key: str,
     *,
     label: Optional[str] = None,
+    sync_token: Optional[str] = None,
     if_match: Optional[str] = None,
     if_none_match: Optional[str] = None,
-    sync_token: Optional[str] = None,
+    client_request_id: Optional[str] = None,
     **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
@@ -269,7 +292,9 @@ def build_put_key_value_request(
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.kv+json, application/problem+json")
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.kv+json, application/problem+json, application/json"
+    )
 
     # Construct URL
     _url = kwargs.pop("template_url", "/kv/{key}")
@@ -280,9 +305,9 @@ def build_put_key_value_request(
     _url: str = _url.format(**path_format_arguments)  # type: ignore
 
     # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if label is not None:
         _params["label"] = _SERIALIZER.query("label", label, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
 
     # Construct headers
     if sync_token is not None:
@@ -291,6 +316,8 @@ def build_put_key_value_request(
         _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
     if if_none_match is not None:
         _headers["If-None-Match"] = _SERIALIZER.header("if_none_match", if_none_match, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
     if content_type is not None:
         _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
     _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
@@ -302,15 +329,18 @@ def build_delete_key_value_request(
     key: str,
     *,
     label: Optional[str] = None,
-    if_match: Optional[str] = None,
     sync_token: Optional[str] = None,
+    if_match: Optional[str] = None,
+    client_request_id: Optional[str] = None,
     **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.kv+json, application/problem+json")
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.kv+json, application/problem+json, application/json"
+    )
 
     # Construct URL
     _url = kwargs.pop("template_url", "/kv/{key}")
@@ -321,15 +351,17 @@ def build_delete_key_value_request(
     _url: str = _url.format(**path_format_arguments)  # type: ignore
 
     # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if label is not None:
         _params["label"] = _SERIALIZER.query("label", label, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
 
     # Construct headers
     if sync_token is not None:
         _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
     if if_match is not None:
         _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
     _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
 
     return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
@@ -339,17 +371,20 @@ def build_check_key_value_request(
     key: str,
     *,
     label: Optional[str] = None,
+    sync_token: Optional[str] = None,
     accept_datetime: Optional[str] = None,
     if_match: Optional[str] = None,
     if_none_match: Optional[str] = None,
     select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
-    sync_token: Optional[str] = None,
+    client_request_id: Optional[str] = None,
     **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop("Accept", "application/json")
+
     # Construct URL
     _url = kwargs.pop("template_url", "/kv/{key}")
     path_format_arguments = {
@@ -359,9 +394,9 @@ def build_check_key_value_request(
     _url: str = _url.format(**path_format_arguments)  # type: ignore
 
     # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if label is not None:
         _params["label"] = _SERIALIZER.query("label", label, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if select is not None:
         _params["$Select"] = _SERIALIZER.query("select", select, "[str]", div=",")
 
@@ -374,6 +409,299 @@ def build_check_key_value_request(
         _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
     if if_none_match is not None:
         _headers["If-None-Match"] = _SERIALIZER.header("if_none_match", if_none_match, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="HEAD", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_get_labels_request(
+    *,
+    name: Optional[str] = None,
+    sync_token: Optional[str] = None,
+    after: Optional[str] = None,
+    accept_datetime: Optional[str] = None,
+    select: Optional[List[Union[str, _models.LabelFields]]] = None,
+    client_request_id: Optional[str] = None,
+    **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.labelset+json, application/problem+json, application/json"
+    )
+
+    # Construct URL
+    _url = kwargs.pop("template_url", "/labels")
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+    if name is not None:
+        _params["name"] = _SERIALIZER.query("name", name, "str")
+    if after is not None:
+        _params["After"] = _SERIALIZER.query("after", after, "str")
+    if select is not None:
+        _params["$Select"] = _SERIALIZER.query("select", select, "[str]", div=",")
+
+    # Construct headers
+    if sync_token is not None:
+        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
+    if accept_datetime is not None:
+        _headers["Accept-Datetime"] = _SERIALIZER.header("accept_datetime", accept_datetime, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_check_labels_request(
+    *,
+    name: Optional[str] = None,
+    sync_token: Optional[str] = None,
+    after: Optional[str] = None,
+    accept_datetime: Optional[str] = None,
+    select: Optional[List[Union[str, _models.LabelFields]]] = None,
+    client_request_id: Optional[str] = None,
+    **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = kwargs.pop("template_url", "/labels")
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+    if name is not None:
+        _params["name"] = _SERIALIZER.query("name", name, "str")
+    if after is not None:
+        _params["After"] = _SERIALIZER.query("after", after, "str")
+    if select is not None:
+        _params["$Select"] = _SERIALIZER.query("select", select, "[str]", div=",")
+
+    # Construct headers
+    if sync_token is not None:
+        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
+    if accept_datetime is not None:
+        _headers["Accept-Datetime"] = _SERIALIZER.header("accept_datetime", accept_datetime, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="HEAD", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_put_lock_request(
+    key: str,
+    *,
+    label: Optional[str] = None,
+    sync_token: Optional[str] = None,
+    if_match: Optional[str] = None,
+    if_none_match: Optional[str] = None,
+    client_request_id: Optional[str] = None,
+    **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.kv+json, application/problem+json, application/json"
+    )
+
+    # Construct URL
+    _url = kwargs.pop("template_url", "/locks/{key}")
+    path_format_arguments = {
+        "key": _SERIALIZER.url("key", key, "str"),
+    }
+
+    _url: str = _url.format(**path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+    if label is not None:
+        _params["label"] = _SERIALIZER.query("label", label, "str")
+
+    # Construct headers
+    if sync_token is not None:
+        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
+    if if_match is not None:
+        _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
+    if if_none_match is not None:
+        _headers["If-None-Match"] = _SERIALIZER.header("if_none_match", if_none_match, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_delete_lock_request(
+    key: str,
+    *,
+    label: Optional[str] = None,
+    sync_token: Optional[str] = None,
+    if_match: Optional[str] = None,
+    if_none_match: Optional[str] = None,
+    client_request_id: Optional[str] = None,
+    **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.kv+json, application/problem+json, application/json"
+    )
+
+    # Construct URL
+    _url = kwargs.pop("template_url", "/locks/{key}")
+    path_format_arguments = {
+        "key": _SERIALIZER.url("key", key, "str"),
+    }
+
+    _url: str = _url.format(**path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+    if label is not None:
+        _params["label"] = _SERIALIZER.query("label", label, "str")
+
+    # Construct headers
+    if sync_token is not None:
+        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
+    if if_match is not None:
+        _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
+    if if_none_match is not None:
+        _headers["If-None-Match"] = _SERIALIZER.header("if_none_match", if_none_match, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_get_operation_details_request(
+    *, snapshot: str, client_request_id: Optional[str] = None, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = kwargs.pop("template_url", "/operations")
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+    _params["snapshot"] = _SERIALIZER.query("snapshot", snapshot, "str")
+
+    # Construct headers
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_get_revisions_request(
+    *,
+    key: Optional[str] = None,
+    label: Optional[str] = None,
+    sync_token: Optional[str] = None,
+    after: Optional[str] = None,
+    accept_datetime: Optional[str] = None,
+    select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
+    tags: Optional[List[str]] = None,
+    client_request_id: Optional[str] = None,
+    **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.kvset+json, application/problem+json, application/json"
+    )
+
+    # Construct URL
+    _url = kwargs.pop("template_url", "/revisions")
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+    if key is not None:
+        _params["key"] = _SERIALIZER.query("key", key, "str")
+    if label is not None:
+        _params["label"] = _SERIALIZER.query("label", label, "str")
+    if after is not None:
+        _params["After"] = _SERIALIZER.query("after", after, "str")
+    if select is not None:
+        _params["$Select"] = _SERIALIZER.query("select", select, "[str]", div=",")
+    if tags is not None:
+        _params["tags"] = [_SERIALIZER.query("tags", q, "str") if q is not None else "" for q in tags]
+
+    # Construct headers
+    if sync_token is not None:
+        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
+    if accept_datetime is not None:
+        _headers["Accept-Datetime"] = _SERIALIZER.header("accept_datetime", accept_datetime, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_check_revisions_request(
+    *,
+    key: Optional[str] = None,
+    label: Optional[str] = None,
+    sync_token: Optional[str] = None,
+    after: Optional[str] = None,
+    accept_datetime: Optional[str] = None,
+    select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
+    tags: Optional[List[str]] = None,
+    client_request_id: Optional[str] = None,
+    **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = kwargs.pop("template_url", "/revisions")
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+    if key is not None:
+        _params["key"] = _SERIALIZER.query("key", key, "str")
+    if label is not None:
+        _params["label"] = _SERIALIZER.query("label", label, "str")
+    if after is not None:
+        _params["After"] = _SERIALIZER.query("after", after, "str")
+    if select is not None:
+        _params["$Select"] = _SERIALIZER.query("select", select, "[str]", div=",")
+    if tags is not None:
+        _params["tags"] = [_SERIALIZER.query("tags", q, "str") if q is not None else "" for q in tags]
+
+    # Construct headers
+    if sync_token is not None:
+        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
+    if accept_datetime is not None:
+        _headers["Accept-Datetime"] = _SERIALIZER.header("accept_datetime", accept_datetime, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
 
     return HttpRequest(method="HEAD", url=_url, params=_params, headers=_headers, **kwargs)
 
@@ -391,15 +719,17 @@ def build_get_snapshots_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.snapshotset+json, application/problem+json")
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.snapshotset+json, application/problem+json, application/json"
+    )
 
     # Construct URL
     _url = kwargs.pop("template_url", "/snapshots")
 
     # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if name is not None:
         _params["name"] = _SERIALIZER.query("name", name, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
     if after is not None:
         _params["After"] = _SERIALIZER.query("after", after, "str")
     if select is not None:
@@ -416,12 +746,18 @@ def build_get_snapshots_request(
 
 
 def build_check_snapshots_request(
-    *, after: Optional[str] = None, sync_token: Optional[str] = None, **kwargs: Any
+    *,
+    sync_token: Optional[str] = None,
+    after: Optional[str] = None,
+    client_request_id: Optional[str] = None,
+    **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop("Accept", "application/json")
+
     # Construct URL
     _url = kwargs.pop("template_url", "/snapshots")
 
@@ -433,6 +769,9 @@ def build_check_snapshots_request(
     # Construct headers
     if sync_token is not None:
         _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
 
     return HttpRequest(method="HEAD", url=_url, params=_params, headers=_headers, **kwargs)
 
@@ -440,17 +779,20 @@ def build_check_snapshots_request(
 def build_get_snapshot_request(
     name: str,
     *,
-    if_match: Optional[str] = None,
-    if_none_match: Optional[str] = None,
     select: Optional[List[Union[str, _models.SnapshotFields]]] = None,
     sync_token: Optional[str] = None,
+    if_match: Optional[str] = None,
+    if_none_match: Optional[str] = None,
+    client_request_id: Optional[str] = None,
     **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.snapshot+json, application/problem+json")
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.snapshot+json, application/problem+json, application/json"
+    )
 
     # Construct URL
     _url = kwargs.pop("template_url", "/snapshots/{name}")
@@ -472,6 +814,8 @@ def build_get_snapshot_request(
         _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
     if if_none_match is not None:
         _headers["If-None-Match"] = _SERIALIZER.header("if_none_match", if_none_match, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
     _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
 
     return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
@@ -483,7 +827,9 @@ def build_create_snapshot_request(name: str, *, sync_token: Optional[str] = None
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.snapshot+json, application/problem+json")
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.snapshot+json, application/problem+json, application/json"
+    )
 
     # Construct URL
     _url = kwargs.pop("template_url", "/snapshots/{name}")
@@ -509,9 +855,10 @@ def build_create_snapshot_request(name: str, *, sync_token: Optional[str] = None
 def build_update_snapshot_request(
     name: str,
     *,
+    sync_token: Optional[str] = None,
     if_match: Optional[str] = None,
     if_none_match: Optional[str] = None,
-    sync_token: Optional[str] = None,
+    client_request_id: Optional[str] = None,
     **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
@@ -519,7 +866,9 @@ def build_update_snapshot_request(
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.snapshot+json, application/problem+json")
+    accept = _headers.pop(
+        "Accept", "application/vnd.microsoft.appconfig.snapshot+json, application/problem+json, application/json"
+    )
 
     # Construct URL
     _url = kwargs.pop("template_url", "/snapshots/{name}")
@@ -539,6 +888,8 @@ def build_update_snapshot_request(
         _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
     if if_none_match is not None:
         _headers["If-None-Match"] = _SERIALIZER.header("if_none_match", if_none_match, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
     if content_type is not None:
         _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
     _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
@@ -549,15 +900,18 @@ def build_update_snapshot_request(
 def build_check_snapshot_request(
     name: str,
     *,
+    sync_token: Optional[str] = None,
     if_match: Optional[str] = None,
     if_none_match: Optional[str] = None,
-    sync_token: Optional[str] = None,
+    client_request_id: Optional[str] = None,
     **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
+    accept = _headers.pop("Accept", "application/json")
+
     # Construct URL
     _url = kwargs.pop("template_url", "/snapshots/{name}")
     path_format_arguments = {
@@ -576,270 +930,22 @@ def build_check_snapshot_request(
         _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
     if if_none_match is not None:
         _headers["If-None-Match"] = _SERIALIZER.header("if_none_match", if_none_match, "str")
+    if client_request_id is not None:
+        _headers["x-ms-client-request-id"] = _SERIALIZER.header("client_request_id", client_request_id, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
 
     return HttpRequest(method="HEAD", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_get_labels_request(
-    *,
-    name: Optional[str] = None,
-    after: Optional[str] = None,
-    accept_datetime: Optional[str] = None,
-    select: Optional[List[Union[str, _models.LabelFields]]] = None,
-    sync_token: Optional[str] = None,
-    **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.labelset+json, application/problem+json")
-
-    # Construct URL
-    _url = kwargs.pop("template_url", "/labels")
-
-    # Construct parameters
-    if name is not None:
-        _params["name"] = _SERIALIZER.query("name", name, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-    if after is not None:
-        _params["After"] = _SERIALIZER.query("after", after, "str")
-    if select is not None:
-        _params["$Select"] = _SERIALIZER.query("select", select, "[str]", div=",")
-
-    # Construct headers
-    if sync_token is not None:
-        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
-    if accept_datetime is not None:
-        _headers["Accept-Datetime"] = _SERIALIZER.header("accept_datetime", accept_datetime, "str")
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_check_labels_request(
-    *,
-    name: Optional[str] = None,
-    after: Optional[str] = None,
-    accept_datetime: Optional[str] = None,
-    select: Optional[List[Union[str, _models.LabelFields]]] = None,
-    sync_token: Optional[str] = None,
-    **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    # Construct URL
-    _url = kwargs.pop("template_url", "/labels")
-
-    # Construct parameters
-    if name is not None:
-        _params["name"] = _SERIALIZER.query("name", name, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-    if after is not None:
-        _params["After"] = _SERIALIZER.query("after", after, "str")
-    if select is not None:
-        _params["$Select"] = _SERIALIZER.query("select", select, "[str]", div=",")
-
-    # Construct headers
-    if sync_token is not None:
-        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
-    if accept_datetime is not None:
-        _headers["Accept-Datetime"] = _SERIALIZER.header("accept_datetime", accept_datetime, "str")
-
-    return HttpRequest(method="HEAD", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_put_lock_request(
-    key: str,
-    *,
-    label: Optional[str] = None,
-    if_match: Optional[str] = None,
-    if_none_match: Optional[str] = None,
-    sync_token: Optional[str] = None,
-    **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.kv+json, application/problem+json")
-
-    # Construct URL
-    _url = kwargs.pop("template_url", "/locks/{key}")
-    path_format_arguments = {
-        "key": _SERIALIZER.url("key", key, "str"),
-    }
-
-    _url: str = _url.format(**path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    if label is not None:
-        _params["label"] = _SERIALIZER.query("label", label, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    if sync_token is not None:
-        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
-    if if_match is not None:
-        _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
-    if if_none_match is not None:
-        _headers["If-None-Match"] = _SERIALIZER.header("if_none_match", if_none_match, "str")
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_delete_lock_request(
-    key: str,
-    *,
-    label: Optional[str] = None,
-    if_match: Optional[str] = None,
-    if_none_match: Optional[str] = None,
-    sync_token: Optional[str] = None,
-    **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.kv+json, application/problem+json")
-
-    # Construct URL
-    _url = kwargs.pop("template_url", "/locks/{key}")
-    path_format_arguments = {
-        "key": _SERIALIZER.url("key", key, "str"),
-    }
-
-    _url: str = _url.format(**path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    if label is not None:
-        _params["label"] = _SERIALIZER.query("label", label, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    if sync_token is not None:
-        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
-    if if_match is not None:
-        _headers["If-Match"] = _SERIALIZER.header("if_match", if_match, "str")
-    if if_none_match is not None:
-        _headers["If-None-Match"] = _SERIALIZER.header("if_none_match", if_none_match, "str")
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_get_revisions_request(
-    *,
-    key: Optional[str] = None,
-    label: Optional[str] = None,
-    after: Optional[str] = None,
-    accept_datetime: Optional[str] = None,
-    select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
-    tags: Optional[List[str]] = None,
-    sync_token: Optional[str] = None,
-    **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    accept = _headers.pop("Accept", "application/vnd.microsoft.appconfig.kvset+json, application/problem+json")
-
-    # Construct URL
-    _url = kwargs.pop("template_url", "/revisions")
-
-    # Construct parameters
-    if key is not None:
-        _params["key"] = _SERIALIZER.query("key", key, "str")
-    if label is not None:
-        _params["label"] = _SERIALIZER.query("label", label, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-    if after is not None:
-        _params["After"] = _SERIALIZER.query("after", after, "str")
-    if select is not None:
-        _params["$Select"] = _SERIALIZER.query("select", select, "[str]", div=",")
-    if tags is not None:
-        _params["tags"] = [_SERIALIZER.query("tags", q, "str") if q is not None else "" for q in tags]
-
-    # Construct headers
-    if sync_token is not None:
-        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
-    if accept_datetime is not None:
-        _headers["Accept-Datetime"] = _SERIALIZER.header("accept_datetime", accept_datetime, "str")
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_check_revisions_request(
-    *,
-    key: Optional[str] = None,
-    label: Optional[str] = None,
-    after: Optional[str] = None,
-    accept_datetime: Optional[str] = None,
-    select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
-    tags: Optional[List[str]] = None,
-    sync_token: Optional[str] = None,
-    **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    # Construct URL
-    _url = kwargs.pop("template_url", "/revisions")
-
-    # Construct parameters
-    if key is not None:
-        _params["key"] = _SERIALIZER.query("key", key, "str")
-    if label is not None:
-        _params["label"] = _SERIALIZER.query("label", label, "str")
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-    if after is not None:
-        _params["After"] = _SERIALIZER.query("after", after, "str")
-    if select is not None:
-        _params["$Select"] = _SERIALIZER.query("select", select, "[str]", div=",")
-    if tags is not None:
-        _params["tags"] = [_SERIALIZER.query("tags", q, "str") if q is not None else "" for q in tags]
-
-    # Construct headers
-    if sync_token is not None:
-        _headers["Sync-Token"] = _SERIALIZER.header("sync_token", sync_token, "str")
-    if accept_datetime is not None:
-        _headers["Accept-Datetime"] = _SERIALIZER.header("accept_datetime", accept_datetime, "str")
-
-    return HttpRequest(method="HEAD", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_get_operation_details_request(*, snapshot: str, **kwargs: Any) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2023-11-01"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = kwargs.pop("template_url", "/operations")
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-    _params["snapshot"] = _SERIALIZER.query("snapshot", snapshot, "str")
-
-    # Construct headers
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
 
 
 class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # pylint: disable=too-many-public-methods
+
     @distributed_trace
     def get_keys(
         self,
+        endpoint: str,
         name: Optional[str] = None,
         after: Optional[str] = None,
+        sync_token: Optional[str] = None,
         accept_datetime: Optional[str] = None,
         **kwargs: Any
     ) -> Iterable["_models.Key"]:
@@ -847,13 +953,19 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
         Gets a list of keys.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param name: A filter for the name of the returned keys. Default value is None.
         :type name: str
-        :param after: Instructs the server to return elements that appear after the element referred to
-         by the specified token. Default value is None.
+        :param after: Instructs the server to return elements that appear after the element referred
+         to by the specified token. Default value is None.
         :type after: str
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
         :param accept_datetime: Requests the server to respond with the state of the resource at the
-         specified time. Default value is None.
+         specified
+         time. Default value is None.
         :type accept_datetime: str
         :return: An iterator like instance of either Key or the result of cls(response)
         :rtype: ~azure.core.paging.ItemPaged[~azure.appconfiguration.models.Key]
@@ -879,17 +991,14 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
                 _request = build_get_keys_request(
                     name=name,
                     after=after,
+                    sync_token=sync_token,
                     accept_datetime=accept_datetime,
-                    sync_token=self._config.sync_token,
                     api_version=api_version,
                     headers=_headers,
                     params=_params,
                 )
-                _request = _convert_request(_request)
                 path_format_arguments = {
-                    "endpoint": self._serialize.url(
-                        "self._config.endpoint", self._config.endpoint, "str", skip_quote=True
-                    ),
+                    "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
                 }
                 _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -906,11 +1015,8 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
                 _request = HttpRequest(
                     "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
                 )
-                _request = _convert_request(_request)
                 path_format_arguments = {
-                    "endpoint": self._serialize.url(
-                        "self._config.endpoint", self._config.endpoint, "str", skip_quote=True
-                    ),
+                    "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
                 }
                 _request.url = self._client.format_url(_request.url, **path_format_arguments)
                 _request.method = "GET"
@@ -944,23 +1050,35 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @distributed_trace
     def check_keys(  # pylint: disable=inconsistent-return-statements
         self,
+        endpoint: str,
         name: Optional[str] = None,
+        sync_token: Optional[str] = None,
         after: Optional[str] = None,
         accept_datetime: Optional[str] = None,
+        client_request_id: Optional[str] = None,
         **kwargs: Any
     ) -> None:
         """Requests the headers and status of the given resource.
 
         Requests the headers and status of the given resource.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param name: A filter for the name of the returned keys. Default value is None.
         :type name: str
-        :param after: Instructs the server to return elements that appear after the element referred to
-         by the specified token. Default value is None.
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param after: Instructs the server to return elements that appear after the element referred
+         to by the specified token. Default value is None.
         :type after: str
         :param accept_datetime: Requests the server to respond with the state of the resource at the
-         specified time. Default value is None.
+         specified
+         time. Default value is None.
         :type accept_datetime: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :return: None or the result of cls(response)
         :rtype: None
         :raises ~azure.core.exceptions.HttpResponseError:
@@ -981,16 +1099,16 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
         _request = build_check_keys_request(
             name=name,
+            sync_token=sync_token,
             after=after,
             accept_datetime=accept_datetime,
-            sync_token=self._config.sync_token,
+            client_request_id=client_request_id,
             api_version=api_version,
             headers=_headers,
             params=_params,
         )
-        _request = _convert_request(_request)
         path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
         }
         _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -1003,7 +1121,8 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
         if response.status_code not in [200]:
             map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response)
+            error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
+            raise HttpResponseError(response=response, model=error)
 
         response_headers = {}
         response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
@@ -1014,8 +1133,10 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @distributed_trace
     def get_key_values(
         self,
+        endpoint: str,
         key: Optional[str] = None,
         label: Optional[str] = None,
+        sync_token: Optional[str] = None,
         after: Optional[str] = None,
         accept_datetime: Optional[str] = None,
         select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
@@ -1029,17 +1150,23 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
         Gets a list of key-values.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param key: A filter used to match keys. Syntax reference:
          https://aka.ms/azconfig/docs/keyvaluefiltering. Default value is None.
         :type key: str
         :param label: A filter used to match labels. Syntax reference:
          https://aka.ms/azconfig/docs/keyvaluefiltering. Default value is None.
         :type label: str
-        :param after: Instructs the server to return elements that appear after the element referred to
-         by the specified token. Default value is None.
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param after: Instructs the server to return elements that appear after the element referred
+         to by the specified token. Default value is None.
         :type after: str
         :param accept_datetime: Requests the server to respond with the state of the resource at the
-         specified time. Default value is None.
+         specified
+         time. Default value is None.
         :type accept_datetime: str
         :param select: Used to select what fields are present in the returned resource(s). Default
          value is None.
@@ -1051,7 +1178,8 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
          value provided. Default value is None.
         :type if_match: str
         :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
+         not
+         match the value provided. Default value is None.
         :type if_none_match: str
         :param tags: A filter used to query by tags. Syntax reference:
          https://aka.ms/azconfig/docs/keyvaluefiltering. Default value is None.
@@ -1080,6 +1208,7 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
                 _request = build_get_key_values_request(
                     key=key,
                     label=label,
+                    sync_token=sync_token,
                     after=after,
                     accept_datetime=accept_datetime,
                     select=select,
@@ -1087,16 +1216,12 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
                     if_match=if_match,
                     if_none_match=if_none_match,
                     tags=tags,
-                    sync_token=self._config.sync_token,
                     api_version=api_version,
                     headers=_headers,
                     params=_params,
                 )
-                _request = _convert_request(_request)
                 path_format_arguments = {
-                    "endpoint": self._serialize.url(
-                        "self._config.endpoint", self._config.endpoint, "str", skip_quote=True
-                    ),
+                    "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
                 }
                 _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -1113,11 +1238,8 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
                 _request = HttpRequest(
                     "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
                 )
-                _request = _convert_request(_request)
                 path_format_arguments = {
-                    "endpoint": self._serialize.url(
-                        "self._config.endpoint", self._config.endpoint, "str", skip_quote=True
-                    ),
+                    "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
                 }
                 _request.url = self._client.format_url(_request.url, **path_format_arguments)
                 _request.method = "GET"
@@ -1151,8 +1273,10 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @distributed_trace
     def check_key_values(  # pylint: disable=inconsistent-return-statements
         self,
+        endpoint: str,
         key: Optional[str] = None,
         label: Optional[str] = None,
+        sync_token: Optional[str] = None,
         after: Optional[str] = None,
         accept_datetime: Optional[str] = None,
         select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
@@ -1160,23 +1284,30 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         if_match: Optional[str] = None,
         if_none_match: Optional[str] = None,
         tags: Optional[List[str]] = None,
+        client_request_id: Optional[str] = None,
         **kwargs: Any
     ) -> None:
         """Requests the headers and status of the given resource.
 
         Requests the headers and status of the given resource.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param key: A filter used to match keys. Syntax reference:
          https://aka.ms/azconfig/docs/keyvaluefiltering. Default value is None.
         :type key: str
         :param label: A filter used to match labels. Syntax reference:
          https://aka.ms/azconfig/docs/keyvaluefiltering. Default value is None.
         :type label: str
-        :param after: Instructs the server to return elements that appear after the element referred to
-         by the specified token. Default value is None.
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param after: Instructs the server to return elements that appear after the element referred
+         to by the specified token. Default value is None.
         :type after: str
         :param accept_datetime: Requests the server to respond with the state of the resource at the
-         specified time. Default value is None.
+         specified
+         time. Default value is None.
         :type accept_datetime: str
         :param select: Used to select what fields are present in the returned resource(s). Default
          value is None.
@@ -1188,11 +1319,15 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
          value provided. Default value is None.
         :type if_match: str
         :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
+         not
+         match the value provided. Default value is None.
         :type if_none_match: str
         :param tags: A filter used to query by tags. Syntax reference:
          https://aka.ms/azconfig/docs/keyvaluefiltering. Default value is None.
         :type tags: list[str]
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :return: None or the result of cls(response)
         :rtype: None
         :raises ~azure.core.exceptions.HttpResponseError:
@@ -1214,6 +1349,7 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         _request = build_check_key_values_request(
             key=key,
             label=label,
+            sync_token=sync_token,
             after=after,
             accept_datetime=accept_datetime,
             select=select,
@@ -1221,14 +1357,13 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
             if_match=if_match,
             if_none_match=if_none_match,
             tags=tags,
-            sync_token=self._config.sync_token,
+            client_request_id=client_request_id,
             api_version=api_version,
             headers=_headers,
             params=_params,
         )
-        _request = _convert_request(_request)
         path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
         }
         _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -1241,11 +1376,12 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
         if response.status_code not in [200]:
             map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response)
+            error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
+            raise HttpResponseError(response=response, model=error)
 
         response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
         response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
 
         if cls:
             return cls(pipeline_response, None, response_headers)  # type: ignore
@@ -1253,34 +1389,47 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @distributed_trace
     def get_key_value(
         self,
+        endpoint: str,
         key: str,
         label: Optional[str] = None,
+        select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
+        sync_token: Optional[str] = None,
         accept_datetime: Optional[str] = None,
         if_match: Optional[str] = None,
         if_none_match: Optional[str] = None,
-        select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
+        client_request_id: Optional[str] = None,
         **kwargs: Any
     ) -> _models.KeyValue:
         """Gets a single key-value.
 
         Gets a single key-value.
 
-        :param key: The key of the key-value to retrieve. Required.
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param key: The key of the key-value. Required.
         :type key: str
         :param label: The label of the key-value to retrieve. Default value is None.
         :type label: str
+        :param select: Used to select what fields are present in the returned resource(s). Default
+         value is None.
+        :type select: list[str or ~azure.appconfiguration.models.KeyValueFields]
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
         :param accept_datetime: Requests the server to respond with the state of the resource at the
-         specified time. Default value is None.
+         specified
+         time. Default value is None.
         :type accept_datetime: str
         :param if_match: Used to perform an operation only if the targeted resource's etag matches the
          value provided. Default value is None.
         :type if_match: str
         :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
+         not
+         match the value provided. Default value is None.
         :type if_none_match: str
-        :param select: Used to select what fields are present in the returned resource(s). Default
-         value is None.
-        :type select: list[str or ~azure.appconfiguration.models.KeyValueFields]
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :return: KeyValue or the result of cls(response)
         :rtype: ~azure.appconfiguration.models.KeyValue
         :raises ~azure.core.exceptions.HttpResponseError:
@@ -1302,18 +1451,18 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         _request = build_get_key_value_request(
             key=key,
             label=label,
+            select=select,
+            sync_token=sync_token,
             accept_datetime=accept_datetime,
             if_match=if_match,
             if_none_match=if_none_match,
-            select=select,
-            sync_token=self._config.sync_token,
+            client_request_id=client_request_id,
             api_version=api_version,
             headers=_headers,
             params=_params,
         )
-        _request = _convert_request(_request)
         path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
         }
         _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -1330,10 +1479,13 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
             raise HttpResponseError(response=response, model=error)
 
         response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
         response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
+        response_headers["x-ms-client-request-id"] = self._deserialize(
+            "str", response.headers.get("x-ms-client-request-id")
+        )
 
-        deserialized = self._deserialize("KeyValue", pipeline_response)
+        deserialized = self._deserialize("KeyValue", pipeline_response.http_response)
 
         if cls:
             return cls(pipeline_response, deserialized, response_headers)  # type: ignore
@@ -1343,10 +1495,13 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @overload
     def put_key_value(
         self,
+        endpoint: str,
         key: str,
         label: Optional[str] = None,
+        sync_token: Optional[str] = None,
         if_match: Optional[str] = None,
         if_none_match: Optional[str] = None,
+        client_request_id: Optional[str] = None,
         entity: Optional[_models.KeyValue] = None,
         *,
         content_type: str = "application/json",
@@ -1356,16 +1511,25 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
         Creates a key-value.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param key: The key of the key-value to create. Required.
         :type key: str
         :param label: The label of the key-value to create. Default value is None.
         :type label: str
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
         :param if_match: Used to perform an operation only if the targeted resource's etag matches the
          value provided. Default value is None.
         :type if_match: str
         :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
+         not
+         match the value provided. Default value is None.
         :type if_none_match: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :param entity: The key-value to create. Default value is None.
         :type entity: ~azure.appconfiguration.models.KeyValue
         :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
@@ -1379,10 +1543,13 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @overload
     def put_key_value(
         self,
+        endpoint: str,
         key: str,
         label: Optional[str] = None,
+        sync_token: Optional[str] = None,
         if_match: Optional[str] = None,
         if_none_match: Optional[str] = None,
+        client_request_id: Optional[str] = None,
         entity: Optional[IO[bytes]] = None,
         *,
         content_type: str = "application/json",
@@ -1392,16 +1559,25 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
         Creates a key-value.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param key: The key of the key-value to create. Required.
         :type key: str
         :param label: The label of the key-value to create. Default value is None.
         :type label: str
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
         :param if_match: Used to perform an operation only if the targeted resource's etag matches the
          value provided. Default value is None.
         :type if_match: str
         :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
+         not
+         match the value provided. Default value is None.
         :type if_none_match: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :param entity: The key-value to create. Default value is None.
         :type entity: IO[bytes]
         :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
@@ -1418,10 +1594,13 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @distributed_trace
     def put_key_value(
         self,
+        endpoint: str,
         key: str,
         label: Optional[str] = None,
+        sync_token: Optional[str] = None,
         if_match: Optional[str] = None,
         if_none_match: Optional[str] = None,
+        client_request_id: Optional[str] = None,
         entity: Optional[Union[_models.KeyValue, IO[bytes]]] = None,
         **kwargs: Any
     ) -> _models.KeyValue:
@@ -1429,16 +1608,25 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
         Creates a key-value.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param key: The key of the key-value to create. Required.
         :type key: str
         :param label: The label of the key-value to create. Default value is None.
         :type label: str
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
         :param if_match: Used to perform an operation only if the targeted resource's etag matches the
          value provided. Default value is None.
         :type if_match: str
         :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
+         not
+         match the value provided. Default value is None.
         :type if_none_match: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :param entity: The key-value to create. Is either a KeyValue type or a IO[bytes] type. Default
          value is None.
         :type entity: ~azure.appconfiguration.models.KeyValue or IO[bytes]
@@ -1475,9 +1663,10 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         _request = build_put_key_value_request(
             key=key,
             label=label,
+            sync_token=sync_token,
             if_match=if_match,
             if_none_match=if_none_match,
-            sync_token=self._config.sync_token,
+            client_request_id=client_request_id,
             api_version=api_version,
             content_type=content_type,
             json=_json,
@@ -1485,9 +1674,8 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
             headers=_headers,
             params=_params,
         )
-        _request = _convert_request(_request)
         path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
         }
         _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -1504,10 +1692,10 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
             raise HttpResponseError(response=response, model=error)
 
         response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
         response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
 
-        deserialized = self._deserialize("KeyValue", pipeline_response)
+        deserialized = self._deserialize("KeyValue", pipeline_response.http_response)
 
         if cls:
             return cls(pipeline_response, deserialized, response_headers)  # type: ignore
@@ -1516,19 +1704,34 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
     @distributed_trace
     def delete_key_value(
-        self, key: str, label: Optional[str] = None, if_match: Optional[str] = None, **kwargs: Any
+        self,
+        endpoint: str,
+        key: str,
+        label: Optional[str] = None,
+        sync_token: Optional[str] = None,
+        if_match: Optional[str] = None,
+        client_request_id: Optional[str] = None,
+        **kwargs: Any
     ) -> Optional[_models.KeyValue]:
         """Deletes a key-value.
 
         Deletes a key-value.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param key: The key of the key-value to delete. Required.
         :type key: str
         :param label: The label of the key-value to delete. Default value is None.
         :type label: str
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
         :param if_match: Used to perform an operation only if the targeted resource's etag matches the
          value provided. Default value is None.
         :type if_match: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :return: KeyValue or None or the result of cls(response)
         :rtype: ~azure.appconfiguration.models.KeyValue or None
         :raises ~azure.core.exceptions.HttpResponseError:
@@ -1550,15 +1753,15 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         _request = build_delete_key_value_request(
             key=key,
             label=label,
+            sync_token=sync_token,
             if_match=if_match,
-            sync_token=self._config.sync_token,
+            client_request_id=client_request_id,
             api_version=api_version,
             headers=_headers,
             params=_params,
         )
-        _request = _convert_request(_request)
         path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
         }
         _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -1577,10 +1780,10 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         deserialized = None
         response_headers = {}
         if response.status_code == 200:
-            response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
             response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+            response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
 
-            deserialized = self._deserialize("KeyValue", pipeline_response)
+            deserialized = self._deserialize("KeyValue", pipeline_response.http_response)
 
         if response.status_code == 204:
             response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
@@ -1593,34 +1796,47 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @distributed_trace
     def check_key_value(  # pylint: disable=inconsistent-return-statements
         self,
+        endpoint: str,
         key: str,
         label: Optional[str] = None,
+        sync_token: Optional[str] = None,
         accept_datetime: Optional[str] = None,
         if_match: Optional[str] = None,
         if_none_match: Optional[str] = None,
         select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
+        client_request_id: Optional[str] = None,
         **kwargs: Any
     ) -> None:
         """Requests the headers and status of the given resource.
 
         Requests the headers and status of the given resource.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param key: The key of the key-value to retrieve. Required.
         :type key: str
         :param label: The label of the key-value to retrieve. Default value is None.
         :type label: str
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
         :param accept_datetime: Requests the server to respond with the state of the resource at the
-         specified time. Default value is None.
+         specified
+         time. Default value is None.
         :type accept_datetime: str
         :param if_match: Used to perform an operation only if the targeted resource's etag matches the
          value provided. Default value is None.
         :type if_match: str
         :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
+         not
+         match the value provided. Default value is None.
         :type if_none_match: str
         :param select: Used to select what fields are present in the returned resource(s). Default
          value is None.
         :type select: list[str or ~azure.appconfiguration.models.KeyValueFields]
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :return: None or the result of cls(response)
         :rtype: None
         :raises ~azure.core.exceptions.HttpResponseError:
@@ -1642,264 +1858,18 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         _request = build_check_key_value_request(
             key=key,
             label=label,
+            sync_token=sync_token,
             accept_datetime=accept_datetime,
             if_match=if_match,
             if_none_match=if_none_match,
             select=select,
-            sync_token=self._config.sync_token,
+            client_request_id=client_request_id,
             api_version=api_version,
             headers=_headers,
             params=_params,
         )
-        _request = _convert_request(_request)
         path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
-        }
-        _request.url = self._client.format_url(_request.url, **path_format_arguments)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            _request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response)
-
-        response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
-        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
-
-        if cls:
-            return cls(pipeline_response, None, response_headers)  # type: ignore
-
-    @distributed_trace
-    def get_snapshots(
-        self,
-        name: Optional[str] = None,
-        after: Optional[str] = None,
-        select: Optional[List[Union[str, _models.SnapshotFields]]] = None,
-        status: Optional[List[Union[str, _models.SnapshotStatus]]] = None,
-        **kwargs: Any
-    ) -> Iterable["_models.Snapshot"]:
-        """Gets a list of key-value snapshots.
-
-        Gets a list of key-value snapshots.
-
-        :param name: A filter for the name of the returned snapshots. Default value is None.
-        :type name: str
-        :param after: Instructs the server to return elements that appear after the element referred to
-         by the specified token. Default value is None.
-        :type after: str
-        :param select: Used to select what fields are present in the returned resource(s). Default
-         value is None.
-        :type select: list[str or ~azure.appconfiguration.models.SnapshotFields]
-        :param status: Used to filter returned snapshots by their status property. Default value is
-         None.
-        :type status: list[str or ~azure.appconfiguration.models.SnapshotStatus]
-        :return: An iterator like instance of either Snapshot or the result of cls(response)
-        :rtype: ~azure.core.paging.ItemPaged[~azure.appconfiguration.models.Snapshot]
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
-        cls: ClsType[_models.SnapshotListResult] = kwargs.pop("cls", None)
-
-        error_map: MutableMapping[int, Type[HttpResponseError]] = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        def prepare_request(next_link=None):
-            if not next_link:
-
-                _request = build_get_snapshots_request(
-                    name=name,
-                    after=after,
-                    select=select,
-                    status=status,
-                    sync_token=self._config.sync_token,
-                    api_version=api_version,
-                    headers=_headers,
-                    params=_params,
-                )
-                _request = _convert_request(_request)
-                path_format_arguments = {
-                    "endpoint": self._serialize.url(
-                        "self._config.endpoint", self._config.endpoint, "str", skip_quote=True
-                    ),
-                }
-                _request.url = self._client.format_url(_request.url, **path_format_arguments)
-
-            else:
-                # make call to next link with the client's api-version
-                _parsed_next_link = urllib.parse.urlparse(next_link)
-                _next_request_params = case_insensitive_dict(
-                    {
-                        key: [urllib.parse.quote(v) for v in value]
-                        for key, value in urllib.parse.parse_qs(_parsed_next_link.query).items()
-                    }
-                )
-                _next_request_params["api-version"] = self._config.api_version
-                _request = HttpRequest(
-                    "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
-                )
-                _request = _convert_request(_request)
-                path_format_arguments = {
-                    "endpoint": self._serialize.url(
-                        "self._config.endpoint", self._config.endpoint, "str", skip_quote=True
-                    ),
-                }
-                _request.url = self._client.format_url(_request.url, **path_format_arguments)
-                _request.method = "GET"
-            return _request
-
-        def extract_data(pipeline_response):
-            deserialized = self._deserialize("SnapshotListResult", pipeline_response)
-            list_of_elem = deserialized.items
-            if cls:
-                list_of_elem = cls(list_of_elem)  # type: ignore
-            return deserialized.next_link or None, iter(list_of_elem)
-
-        def get_next(next_link=None):
-            _request = prepare_request(next_link)
-
-            _stream = False
-            pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-                _request, stream=_stream, **kwargs
-            )
-            response = pipeline_response.http_response
-
-            if response.status_code not in [200]:
-                map_error(status_code=response.status_code, response=response, error_map=error_map)
-                error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
-                raise HttpResponseError(response=response, model=error)
-
-            return pipeline_response
-
-        return ItemPaged(get_next, extract_data)
-
-    @distributed_trace
-    def check_snapshots(  # pylint: disable=inconsistent-return-statements
-        self, after: Optional[str] = None, **kwargs: Any
-    ) -> None:
-        """Requests the headers and status of the given resource.
-
-        Requests the headers and status of the given resource.
-
-        :param after: Instructs the server to return elements that appear after the element referred to
-         by the specified token. Default value is None.
-        :type after: str
-        :return: None or the result of cls(response)
-        :rtype: None
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-        error_map: MutableMapping[int, Type[HttpResponseError]] = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
-        cls: ClsType[None] = kwargs.pop("cls", None)
-
-        _request = build_check_snapshots_request(
-            after=after,
-            sync_token=self._config.sync_token,
-            api_version=api_version,
-            headers=_headers,
-            params=_params,
-        )
-        _request = _convert_request(_request)
-        path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
-        }
-        _request.url = self._client.format_url(_request.url, **path_format_arguments)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            _request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response)
-
-        response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
-
-        if cls:
-            return cls(pipeline_response, None, response_headers)  # type: ignore
-
-    @distributed_trace
-    def get_snapshot(
-        self,
-        name: str,
-        if_match: Optional[str] = None,
-        if_none_match: Optional[str] = None,
-        select: Optional[List[Union[str, _models.SnapshotFields]]] = None,
-        **kwargs: Any
-    ) -> _models.Snapshot:
-        """Gets a single key-value snapshot.
-
-        Gets a single key-value snapshot.
-
-        :param name: The name of the key-value snapshot to retrieve. Required.
-        :type name: str
-        :param if_match: Used to perform an operation only if the targeted resource's etag matches the
-         value provided. Default value is None.
-        :type if_match: str
-        :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
-        :type if_none_match: str
-        :param select: Used to select what fields are present in the returned resource(s). Default
-         value is None.
-        :type select: list[str or ~azure.appconfiguration.models.SnapshotFields]
-        :return: Snapshot or the result of cls(response)
-        :rtype: ~azure.appconfiguration.models.Snapshot
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-        error_map: MutableMapping[int, Type[HttpResponseError]] = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
-        cls: ClsType[_models.Snapshot] = kwargs.pop("cls", None)
-
-        _request = build_get_snapshot_request(
-            name=name,
-            if_match=if_match,
-            if_none_match=if_none_match,
-            select=select,
-            sync_token=self._config.sync_token,
-            api_version=api_version,
-            headers=_headers,
-            params=_params,
-        )
-        _request = _convert_request(_request)
-        path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
         }
         _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -1916,426 +1886,8 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
             raise HttpResponseError(response=response, model=error)
 
         response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
         response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
-        response_headers["Link"] = self._deserialize("str", response.headers.get("Link"))
-
-        deserialized = self._deserialize("Snapshot", pipeline_response)
-
-        if cls:
-            return cls(pipeline_response, deserialized, response_headers)  # type: ignore
-
-        return deserialized  # type: ignore
-
-    def _create_snapshot_initial(
-        self, name: str, entity: Union[_models.Snapshot, IO[bytes]], **kwargs: Any
-    ) -> _models.Snapshot:
-        error_map: MutableMapping[int, Type[HttpResponseError]] = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[_models.Snapshot] = kwargs.pop("cls", None)
-
-        content_type = content_type or "application/json"
-        _json = None
-        _content = None
-        if isinstance(entity, (IOBase, bytes)):
-            _content = entity
-        else:
-            _json = self._serialize.body(entity, "Snapshot")
-
-        _request = build_create_snapshot_request(
-            name=name,
-            sync_token=self._config.sync_token,
-            api_version=api_version,
-            content_type=content_type,
-            json=_json,
-            content=_content,
-            headers=_headers,
-            params=_params,
-        )
-        _request = _convert_request(_request)
-        path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
-        }
-        _request.url = self._client.format_url(_request.url, **path_format_arguments)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            _request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [201]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
-            raise HttpResponseError(response=response, model=error)
-
-        response_headers = {}
         response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
-        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
-        response_headers["Link"] = self._deserialize("str", response.headers.get("Link"))
-        response_headers["Operation-Location"] = self._deserialize("str", response.headers.get("Operation-Location"))
-
-        deserialized = self._deserialize("Snapshot", pipeline_response)
-
-        if cls:
-            return cls(pipeline_response, deserialized, response_headers)  # type: ignore
-
-        return deserialized  # type: ignore
-
-    @overload
-    def begin_create_snapshot(
-        self, name: str, entity: _models.Snapshot, *, content_type: str = "application/json", **kwargs: Any
-    ) -> LROPoller[_models.Snapshot]:
-        """Creates a key-value snapshot.
-
-        Creates a key-value snapshot.
-
-        :param name: The name of the key-value snapshot to create. Required.
-        :type name: str
-        :param entity: The key-value snapshot to create. Required.
-        :type entity: ~azure.appconfiguration.models.Snapshot
-        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: An instance of LROPoller that returns either Snapshot or the result of cls(response)
-        :rtype: ~azure.core.polling.LROPoller[~azure.appconfiguration.models.Snapshot]
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-
-    @overload
-    def begin_create_snapshot(
-        self, name: str, entity: IO[bytes], *, content_type: str = "application/json", **kwargs: Any
-    ) -> LROPoller[_models.Snapshot]:
-        """Creates a key-value snapshot.
-
-        Creates a key-value snapshot.
-
-        :param name: The name of the key-value snapshot to create. Required.
-        :type name: str
-        :param entity: The key-value snapshot to create. Required.
-        :type entity: IO[bytes]
-        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
-         Known values are: 'application/json', 'application/vnd.microsoft.appconfig.snapshot+json'.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: An instance of LROPoller that returns either Snapshot or the result of cls(response)
-        :rtype: ~azure.core.polling.LROPoller[~azure.appconfiguration.models.Snapshot]
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-
-    @distributed_trace
-    def begin_create_snapshot(
-        self, name: str, entity: Union[_models.Snapshot, IO[bytes]], **kwargs: Any
-    ) -> LROPoller[_models.Snapshot]:
-        """Creates a key-value snapshot.
-
-        Creates a key-value snapshot.
-
-        :param name: The name of the key-value snapshot to create. Required.
-        :type name: str
-        :param entity: The key-value snapshot to create. Is either a Snapshot type or a IO[bytes] type.
-         Required.
-        :type entity: ~azure.appconfiguration.models.Snapshot or IO[bytes]
-        :return: An instance of LROPoller that returns either Snapshot or the result of cls(response)
-        :rtype: ~azure.core.polling.LROPoller[~azure.appconfiguration.models.Snapshot]
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[_models.Snapshot] = kwargs.pop("cls", None)
-        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
-        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
-        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
-        if cont_token is None:
-            raw_result = self._create_snapshot_initial(
-                name=name,
-                entity=entity,
-                api_version=api_version,
-                content_type=content_type,
-                cls=lambda x, y, z: x,
-                headers=_headers,
-                params=_params,
-                **kwargs
-            )
-        kwargs.pop("error_map", None)
-
-        def get_long_running_output(pipeline_response):
-            response_headers = {}
-            response = pipeline_response.http_response
-            response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
-            response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
-            response_headers["Link"] = self._deserialize("str", response.headers.get("Link"))
-            response_headers["Operation-Location"] = self._deserialize(
-                "str", response.headers.get("Operation-Location")
-            )
-
-            deserialized = self._deserialize("Snapshot", pipeline_response)
-            if cls:
-                return cls(pipeline_response, deserialized, response_headers)  # type: ignore
-            return deserialized
-
-        path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
-        }
-
-        if polling is True:
-            polling_method: PollingMethod = cast(
-                PollingMethod, LROBasePolling(lro_delay, path_format_arguments=path_format_arguments, **kwargs)
-            )
-        elif polling is False:
-            polling_method = cast(PollingMethod, NoPolling())
-        else:
-            polling_method = polling
-        if cont_token:
-            return LROPoller[_models.Snapshot].from_continuation_token(
-                polling_method=polling_method,
-                continuation_token=cont_token,
-                client=self._client,
-                deserialization_callback=get_long_running_output,
-            )
-        return LROPoller[_models.Snapshot](
-            self._client, raw_result, get_long_running_output, polling_method  # type: ignore
-        )
-
-    @overload
-    def update_snapshot(
-        self,
-        name: str,
-        entity: _models.SnapshotUpdateParameters,
-        if_match: Optional[str] = None,
-        if_none_match: Optional[str] = None,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> _models.Snapshot:
-        """Updates the state of a key-value snapshot.
-
-        Updates the state of a key-value snapshot.
-
-        :param name: The name of the key-value snapshot to update. Required.
-        :type name: str
-        :param entity: The parameters used to update the snapshot. Required.
-        :type entity: ~azure.appconfiguration.models.SnapshotUpdateParameters
-        :param if_match: Used to perform an operation only if the targeted resource's etag matches the
-         value provided. Default value is None.
-        :type if_match: str
-        :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
-        :type if_none_match: str
-        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: Snapshot or the result of cls(response)
-        :rtype: ~azure.appconfiguration.models.Snapshot
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-
-    @overload
-    def update_snapshot(
-        self,
-        name: str,
-        entity: IO[bytes],
-        if_match: Optional[str] = None,
-        if_none_match: Optional[str] = None,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> _models.Snapshot:
-        """Updates the state of a key-value snapshot.
-
-        Updates the state of a key-value snapshot.
-
-        :param name: The name of the key-value snapshot to update. Required.
-        :type name: str
-        :param entity: The parameters used to update the snapshot. Required.
-        :type entity: IO[bytes]
-        :param if_match: Used to perform an operation only if the targeted resource's etag matches the
-         value provided. Default value is None.
-        :type if_match: str
-        :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
-        :type if_none_match: str
-        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
-         Known values are: 'application/json', 'application/merge-patch+json'. Default value is
-         "application/json".
-        :paramtype content_type: str
-        :return: Snapshot or the result of cls(response)
-        :rtype: ~azure.appconfiguration.models.Snapshot
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-
-    @distributed_trace
-    def update_snapshot(
-        self,
-        name: str,
-        entity: Union[_models.SnapshotUpdateParameters, IO[bytes]],
-        if_match: Optional[str] = None,
-        if_none_match: Optional[str] = None,
-        **kwargs: Any
-    ) -> _models.Snapshot:
-        """Updates the state of a key-value snapshot.
-
-        Updates the state of a key-value snapshot.
-
-        :param name: The name of the key-value snapshot to update. Required.
-        :type name: str
-        :param entity: The parameters used to update the snapshot. Is either a SnapshotUpdateParameters
-         type or a IO[bytes] type. Required.
-        :type entity: ~azure.appconfiguration.models.SnapshotUpdateParameters or IO[bytes]
-        :param if_match: Used to perform an operation only if the targeted resource's etag matches the
-         value provided. Default value is None.
-        :type if_match: str
-        :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
-        :type if_none_match: str
-        :return: Snapshot or the result of cls(response)
-        :rtype: ~azure.appconfiguration.models.Snapshot
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-        error_map: MutableMapping[int, Type[HttpResponseError]] = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[_models.Snapshot] = kwargs.pop("cls", None)
-
-        content_type = content_type or "application/json"
-        _json = None
-        _content = None
-        if isinstance(entity, (IOBase, bytes)):
-            _content = entity
-        else:
-            _json = self._serialize.body(entity, "SnapshotUpdateParameters")
-
-        _request = build_update_snapshot_request(
-            name=name,
-            if_match=if_match,
-            if_none_match=if_none_match,
-            sync_token=self._config.sync_token,
-            api_version=api_version,
-            content_type=content_type,
-            json=_json,
-            content=_content,
-            headers=_headers,
-            params=_params,
-        )
-        _request = _convert_request(_request)
-        path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
-        }
-        _request.url = self._client.format_url(_request.url, **path_format_arguments)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            _request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
-            raise HttpResponseError(response=response, model=error)
-
-        response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
-        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
-        response_headers["Link"] = self._deserialize("str", response.headers.get("Link"))
-
-        deserialized = self._deserialize("Snapshot", pipeline_response)
-
-        if cls:
-            return cls(pipeline_response, deserialized, response_headers)  # type: ignore
-
-        return deserialized  # type: ignore
-
-    @distributed_trace
-    def check_snapshot(  # pylint: disable=inconsistent-return-statements
-        self, name: str, if_match: Optional[str] = None, if_none_match: Optional[str] = None, **kwargs: Any
-    ) -> None:
-        """Requests the headers and status of the given resource.
-
-        Requests the headers and status of the given resource.
-
-        :param name: The name of the key-value snapshot to check. Required.
-        :type name: str
-        :param if_match: Used to perform an operation only if the targeted resource's etag matches the
-         value provided. Default value is None.
-        :type if_match: str
-        :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
-        :type if_none_match: str
-        :return: None or the result of cls(response)
-        :rtype: None
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-        error_map: MutableMapping[int, Type[HttpResponseError]] = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
-        cls: ClsType[None] = kwargs.pop("cls", None)
-
-        _request = build_check_snapshot_request(
-            name=name,
-            if_match=if_match,
-            if_none_match=if_none_match,
-            sync_token=self._config.sync_token,
-            api_version=api_version,
-            headers=_headers,
-            params=_params,
-        )
-        _request = _convert_request(_request)
-        path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
-        }
-        _request.url = self._client.format_url(_request.url, **path_format_arguments)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            _request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response)
-
-        response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
-        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
-        response_headers["Link"] = self._deserialize("str", response.headers.get("Link"))
 
         if cls:
             return cls(pipeline_response, None, response_headers)  # type: ignore
@@ -2343,27 +1895,39 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @distributed_trace
     def get_labels(
         self,
+        endpoint: str,
         name: Optional[str] = None,
+        sync_token: Optional[str] = None,
         after: Optional[str] = None,
         accept_datetime: Optional[str] = None,
         select: Optional[List[Union[str, _models.LabelFields]]] = None,
+        client_request_id: Optional[str] = None,
         **kwargs: Any
     ) -> Iterable["_models.Label"]:
         """Gets a list of labels.
 
         Gets a list of labels.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param name: A filter for the name of the returned labels. Default value is None.
         :type name: str
-        :param after: Instructs the server to return elements that appear after the element referred to
-         by the specified token. Default value is None.
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param after: Instructs the server to return elements that appear after the element referred
+         to by the specified token. Default value is None.
         :type after: str
         :param accept_datetime: Requests the server to respond with the state of the resource at the
-         specified time. Default value is None.
+         specified
+         time. Default value is None.
         :type accept_datetime: str
         :param select: Used to select what fields are present in the returned resource(s). Default
          value is None.
         :type select: list[str or ~azure.appconfiguration.models.LabelFields]
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :return: An iterator like instance of either Label or the result of cls(response)
         :rtype: ~azure.core.paging.ItemPaged[~azure.appconfiguration.models.Label]
         :raises ~azure.core.exceptions.HttpResponseError:
@@ -2387,19 +1951,17 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
                 _request = build_get_labels_request(
                     name=name,
+                    sync_token=sync_token,
                     after=after,
                     accept_datetime=accept_datetime,
                     select=select,
-                    sync_token=self._config.sync_token,
+                    client_request_id=client_request_id,
                     api_version=api_version,
                     headers=_headers,
                     params=_params,
                 )
-                _request = _convert_request(_request)
                 path_format_arguments = {
-                    "endpoint": self._serialize.url(
-                        "self._config.endpoint", self._config.endpoint, "str", skip_quote=True
-                    ),
+                    "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
                 }
                 _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -2416,11 +1978,8 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
                 _request = HttpRequest(
                     "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
                 )
-                _request = _convert_request(_request)
                 path_format_arguments = {
-                    "endpoint": self._serialize.url(
-                        "self._config.endpoint", self._config.endpoint, "str", skip_quote=True
-                    ),
+                    "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
                 }
                 _request.url = self._client.format_url(_request.url, **path_format_arguments)
                 _request.method = "GET"
@@ -2454,27 +2013,39 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @distributed_trace
     def check_labels(  # pylint: disable=inconsistent-return-statements
         self,
+        endpoint: str,
         name: Optional[str] = None,
+        sync_token: Optional[str] = None,
         after: Optional[str] = None,
         accept_datetime: Optional[str] = None,
         select: Optional[List[Union[str, _models.LabelFields]]] = None,
+        client_request_id: Optional[str] = None,
         **kwargs: Any
     ) -> None:
         """Requests the headers and status of the given resource.
 
         Requests the headers and status of the given resource.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param name: A filter for the name of the returned labels. Default value is None.
         :type name: str
-        :param after: Instructs the server to return elements that appear after the element referred to
-         by the specified token. Default value is None.
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param after: Instructs the server to return elements that appear after the element referred
+         to by the specified token. Default value is None.
         :type after: str
         :param accept_datetime: Requests the server to respond with the state of the resource at the
-         specified time. Default value is None.
+         specified
+         time. Default value is None.
         :type accept_datetime: str
         :param select: Used to select what fields are present in the returned resource(s). Default
          value is None.
         :type select: list[str or ~azure.appconfiguration.models.LabelFields]
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :return: None or the result of cls(response)
         :rtype: None
         :raises ~azure.core.exceptions.HttpResponseError:
@@ -2495,17 +2066,17 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
         _request = build_check_labels_request(
             name=name,
+            sync_token=sync_token,
             after=after,
             accept_datetime=accept_datetime,
             select=select,
-            sync_token=self._config.sync_token,
+            client_request_id=client_request_id,
             api_version=api_version,
             headers=_headers,
             params=_params,
         )
-        _request = _convert_request(_request)
         path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
         }
         _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -2518,7 +2089,8 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
 
         if response.status_code not in [200]:
             map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response)
+            error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
+            raise HttpResponseError(response=response, model=error)
 
         response_headers = {}
         response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
@@ -2529,26 +2101,38 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @distributed_trace
     def put_lock(
         self,
+        endpoint: str,
         key: str,
         label: Optional[str] = None,
+        sync_token: Optional[str] = None,
         if_match: Optional[str] = None,
         if_none_match: Optional[str] = None,
+        client_request_id: Optional[str] = None,
         **kwargs: Any
     ) -> _models.KeyValue:
         """Locks a key-value.
 
         Locks a key-value.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param key: The key of the key-value to lock. Required.
         :type key: str
         :param label: The label, if any, of the key-value to lock. Default value is None.
         :type label: str
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
         :param if_match: Used to perform an operation only if the targeted resource's etag matches the
          value provided. Default value is None.
         :type if_match: str
         :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
+         not
+         match the value provided. Default value is None.
         :type if_none_match: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :return: KeyValue or the result of cls(response)
         :rtype: ~azure.appconfiguration.models.KeyValue
         :raises ~azure.core.exceptions.HttpResponseError:
@@ -2570,16 +2154,16 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         _request = build_put_lock_request(
             key=key,
             label=label,
+            sync_token=sync_token,
             if_match=if_match,
             if_none_match=if_none_match,
-            sync_token=self._config.sync_token,
+            client_request_id=client_request_id,
             api_version=api_version,
             headers=_headers,
             params=_params,
         )
-        _request = _convert_request(_request)
         path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
         }
         _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -2596,10 +2180,10 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
             raise HttpResponseError(response=response, model=error)
 
         response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
         response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
 
-        deserialized = self._deserialize("KeyValue", pipeline_response)
+        deserialized = self._deserialize("KeyValue", pipeline_response.http_response)
 
         if cls:
             return cls(pipeline_response, deserialized, response_headers)  # type: ignore
@@ -2609,26 +2193,38 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @distributed_trace
     def delete_lock(
         self,
+        endpoint: str,
         key: str,
         label: Optional[str] = None,
+        sync_token: Optional[str] = None,
         if_match: Optional[str] = None,
         if_none_match: Optional[str] = None,
+        client_request_id: Optional[str] = None,
         **kwargs: Any
     ) -> _models.KeyValue:
         """Unlocks a key-value.
 
         Unlocks a key-value.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param key: The key of the key-value to unlock. Required.
         :type key: str
         :param label: The label, if any, of the key-value to unlock. Default value is None.
         :type label: str
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
         :param if_match: Used to perform an operation only if the targeted resource's etag matches the
          value provided. Default value is None.
         :type if_match: str
         :param if_none_match: Used to perform an operation only if the targeted resource's etag does
-         not match the value provided. Default value is None.
+         not
+         match the value provided. Default value is None.
         :type if_none_match: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :return: KeyValue or the result of cls(response)
         :rtype: ~azure.appconfiguration.models.KeyValue
         :raises ~azure.core.exceptions.HttpResponseError:
@@ -2650,16 +2246,16 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         _request = build_delete_lock_request(
             key=key,
             label=label,
+            sync_token=sync_token,
             if_match=if_match,
             if_none_match=if_none_match,
-            sync_token=self._config.sync_token,
+            client_request_id=client_request_id,
             api_version=api_version,
             headers=_headers,
             params=_params,
         )
-        _request = _convert_request(_request)
         path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
         }
         _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -2676,10 +2272,10 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
             raise HttpResponseError(response=response, model=error)
 
         response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
         response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
 
-        deserialized = self._deserialize("KeyValue", pipeline_response)
+        deserialized = self._deserialize("KeyValue", pipeline_response.http_response)
 
         if cls:
             return cls(pipeline_response, deserialized, response_headers)  # type: ignore
@@ -2687,31 +2283,104 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         return deserialized  # type: ignore
 
     @distributed_trace
+    def get_operation_details(
+        self, endpoint: str, snapshot: str, client_request_id: Optional[str] = None, **kwargs: Any
+    ) -> _models.OperationDetails:
+        """Gets the state of a long running operation.
+
+        Gets the state of a long running operation.
+
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param snapshot: Snapshot identifier for the long running operation. Required.
+        :type snapshot: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
+        :return: OperationDetails or the result of cls(response)
+        :rtype: ~azure.appconfiguration.models.OperationDetails
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
+        cls: ClsType[_models.OperationDetails] = kwargs.pop("cls", None)
+
+        _request = build_get_operation_details_request(
+            snapshot=snapshot,
+            client_request_id=client_request_id,
+            api_version=api_version,
+            headers=_headers,
+            params=_params,
+        )
+        path_format_arguments = {
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
+        }
+        _request.url = self._client.format_url(_request.url, **path_format_arguments)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            _request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
+            raise HttpResponseError(response=response, model=error)
+
+        deserialized = self._deserialize("OperationDetails", pipeline_response.http_response)
+
+        if cls:
+            return cls(pipeline_response, deserialized, {})  # type: ignore
+
+        return deserialized  # type: ignore
+
+    @distributed_trace
     def get_revisions(
         self,
+        endpoint: str,
         key: Optional[str] = None,
         label: Optional[str] = None,
+        sync_token: Optional[str] = None,
         after: Optional[str] = None,
         accept_datetime: Optional[str] = None,
         select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
         tags: Optional[List[str]] = None,
+        client_request_id: Optional[str] = None,
         **kwargs: Any
     ) -> Iterable["_models.KeyValue"]:
         """Gets a list of key-value revisions.
 
         Gets a list of key-value revisions.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param key: A filter used to match keys. Syntax reference:
          https://aka.ms/azconfig/docs/restapirevisions. Default value is None.
         :type key: str
         :param label: A filter used to match labels. Syntax reference:
          https://aka.ms/azconfig/docs/restapirevisions. Default value is None.
         :type label: str
-        :param after: Instructs the server to return elements that appear after the element referred to
-         by the specified token. Default value is None.
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param after: Instructs the server to return elements that appear after the element referred
+         to by the specified token. Default value is None.
         :type after: str
         :param accept_datetime: Requests the server to respond with the state of the resource at the
-         specified time. Default value is None.
+         specified
+         time. Default value is None.
         :type accept_datetime: str
         :param select: Used to select what fields are present in the returned resource(s). Default
          value is None.
@@ -2719,6 +2388,9 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         :param tags: A filter used to query by tags. Syntax reference:
          https://aka.ms/azconfig/docs/restapirevisions. Default value is None.
         :type tags: list[str]
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :return: An iterator like instance of either KeyValue or the result of cls(response)
         :rtype: ~azure.core.paging.ItemPaged[~azure.appconfiguration.models.KeyValue]
         :raises ~azure.core.exceptions.HttpResponseError:
@@ -2743,20 +2415,18 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
                 _request = build_get_revisions_request(
                     key=key,
                     label=label,
+                    sync_token=sync_token,
                     after=after,
                     accept_datetime=accept_datetime,
                     select=select,
                     tags=tags,
-                    sync_token=self._config.sync_token,
+                    client_request_id=client_request_id,
                     api_version=api_version,
                     headers=_headers,
                     params=_params,
                 )
-                _request = _convert_request(_request)
                 path_format_arguments = {
-                    "endpoint": self._serialize.url(
-                        "self._config.endpoint", self._config.endpoint, "str", skip_quote=True
-                    ),
+                    "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
                 }
                 _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -2773,11 +2443,8 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
                 _request = HttpRequest(
                     "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
                 )
-                _request = _convert_request(_request)
                 path_format_arguments = {
-                    "endpoint": self._serialize.url(
-                        "self._config.endpoint", self._config.endpoint, "str", skip_quote=True
-                    ),
+                    "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
                 }
                 _request.url = self._client.format_url(_request.url, **path_format_arguments)
                 _request.method = "GET"
@@ -2811,29 +2478,38 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
     @distributed_trace
     def check_revisions(  # pylint: disable=inconsistent-return-statements
         self,
+        endpoint: str,
         key: Optional[str] = None,
         label: Optional[str] = None,
+        sync_token: Optional[str] = None,
         after: Optional[str] = None,
         accept_datetime: Optional[str] = None,
         select: Optional[List[Union[str, _models.KeyValueFields]]] = None,
         tags: Optional[List[str]] = None,
+        client_request_id: Optional[str] = None,
         **kwargs: Any
     ) -> None:
         """Requests the headers and status of the given resource.
 
         Requests the headers and status of the given resource.
 
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
         :param key: A filter used to match keys. Syntax reference:
          https://aka.ms/azconfig/docs/restapirevisions. Default value is None.
         :type key: str
         :param label: A filter used to match labels. Syntax reference:
          https://aka.ms/azconfig/docs/restapirevisions. Default value is None.
         :type label: str
-        :param after: Instructs the server to return elements that appear after the element referred to
-         by the specified token. Default value is None.
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param after: Instructs the server to return elements that appear after the element referred
+         to by the specified token. Default value is None.
         :type after: str
         :param accept_datetime: Requests the server to respond with the state of the resource at the
-         specified time. Default value is None.
+         specified
+         time. Default value is None.
         :type accept_datetime: str
         :param select: Used to select what fields are present in the returned resource(s). Default
          value is None.
@@ -2841,6 +2517,9 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         :param tags: A filter used to query by tags. Syntax reference:
          https://aka.ms/azconfig/docs/restapirevisions. Default value is None.
         :type tags: list[str]
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
         :return: None or the result of cls(response)
         :rtype: None
         :raises ~azure.core.exceptions.HttpResponseError:
@@ -2862,74 +2541,18 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
         _request = build_check_revisions_request(
             key=key,
             label=label,
+            sync_token=sync_token,
             after=after,
             accept_datetime=accept_datetime,
             select=select,
             tags=tags,
-            sync_token=self._config.sync_token,
+            client_request_id=client_request_id,
             api_version=api_version,
             headers=_headers,
             params=_params,
         )
-        _request = _convert_request(_request)
         path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
-        }
-        _request.url = self._client.format_url(_request.url, **path_format_arguments)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            _request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response)
-
-        response_headers = {}
-        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
-        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
-
-        if cls:
-            return cls(pipeline_response, None, response_headers)  # type: ignore
-
-    @distributed_trace
-    def get_operation_details(self, snapshot: str, **kwargs: Any) -> _models.OperationDetails:
-        """Gets the state of a long running operation.
-
-        Gets the state of a long running operation.
-
-        :param snapshot: Snapshot identifier for the long running operation. Required.
-        :type snapshot: str
-        :return: OperationDetails or the result of cls(response)
-        :rtype: ~azure.appconfiguration.models.OperationDetails
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-        error_map: MutableMapping[int, Type[HttpResponseError]] = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
-        cls: ClsType[_models.OperationDetails] = kwargs.pop("cls", None)
-
-        _request = build_get_operation_details_request(
-            snapshot=snapshot,
-            api_version=api_version,
-            headers=_headers,
-            params=_params,
-        )
-        _request = _convert_request(_request)
-        path_format_arguments = {
-            "endpoint": self._serialize.url("self._config.endpoint", self._config.endpoint, "str", skip_quote=True),
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
         }
         _request.url = self._client.format_url(_request.url, **path_format_arguments)
 
@@ -2945,9 +2568,803 @@ class AzureAppConfigurationOperationsMixin(AzureAppConfigurationMixinABC):  # py
             error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
             raise HttpResponseError(response=response, model=error)
 
-        deserialized = self._deserialize("OperationDetails", pipeline_response)
+        response_headers = {}
+        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
 
         if cls:
-            return cls(pipeline_response, deserialized, {})  # type: ignore
+            return cls(pipeline_response, None, response_headers)  # type: ignore
+
+    @distributed_trace
+    def get_snapshots(
+        self,
+        endpoint: str,
+        name: Optional[str] = None,
+        after: Optional[str] = None,
+        select: Optional[List[Union[str, _models.SnapshotFields]]] = None,
+        status: Optional[List[Union[str, _models.SnapshotStatus]]] = None,
+        sync_token: Optional[str] = None,
+        **kwargs: Any
+    ) -> Iterable["_models.Snapshot"]:
+        """Gets a list of key-value snapshots.
+
+        Gets a list of key-value snapshots.
+
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param name: A filter for the name of the returned snapshots. Default value is None.
+        :type name: str
+        :param after: Instructs the server to return elements that appear after the element referred
+         to by the specified token. Default value is None.
+        :type after: str
+        :param select: Used to select what fields are present in the returned resource(s). Default
+         value is None.
+        :type select: list[str or ~azure.appconfiguration.models.SnapshotFields]
+        :param status: Used to filter returned snapshots by their status property. Default value is
+         None.
+        :type status: list[str or ~azure.appconfiguration.models.SnapshotStatus]
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :return: An iterator like instance of either Snapshot or the result of cls(response)
+        :rtype: ~azure.core.paging.ItemPaged[~azure.appconfiguration.models.Snapshot]
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
+        cls: ClsType[_models.SnapshotListResult] = kwargs.pop("cls", None)
+
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        def prepare_request(next_link=None):
+            if not next_link:
+
+                _request = build_get_snapshots_request(
+                    name=name,
+                    after=after,
+                    select=select,
+                    status=status,
+                    sync_token=sync_token,
+                    api_version=api_version,
+                    headers=_headers,
+                    params=_params,
+                )
+                path_format_arguments = {
+                    "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
+                }
+                _request.url = self._client.format_url(_request.url, **path_format_arguments)
+
+            else:
+                # make call to next link with the client's api-version
+                _parsed_next_link = urllib.parse.urlparse(next_link)
+                _next_request_params = case_insensitive_dict(
+                    {
+                        key: [urllib.parse.quote(v) for v in value]
+                        for key, value in urllib.parse.parse_qs(_parsed_next_link.query).items()
+                    }
+                )
+                _next_request_params["api-version"] = self._config.api_version
+                _request = HttpRequest(
+                    "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
+                )
+                path_format_arguments = {
+                    "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
+                }
+                _request.url = self._client.format_url(_request.url, **path_format_arguments)
+                _request.method = "GET"
+            return _request
+
+        def extract_data(pipeline_response):
+            deserialized = self._deserialize("SnapshotListResult", pipeline_response)
+            list_of_elem = deserialized.items
+            if cls:
+                list_of_elem = cls(list_of_elem)  # type: ignore
+            return deserialized.next_link or None, iter(list_of_elem)
+
+        def get_next(next_link=None):
+            _request = prepare_request(next_link)
+
+            _stream = False
+            pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+                _request, stream=_stream, **kwargs
+            )
+            response = pipeline_response.http_response
+
+            if response.status_code not in [200]:
+                map_error(status_code=response.status_code, response=response, error_map=error_map)
+                error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
+                raise HttpResponseError(response=response, model=error)
+
+            return pipeline_response
+
+        return ItemPaged(get_next, extract_data)
+
+    @distributed_trace
+    def check_snapshots(  # pylint: disable=inconsistent-return-statements
+        self,
+        endpoint: str,
+        sync_token: Optional[str] = None,
+        after: Optional[str] = None,
+        client_request_id: Optional[str] = None,
+        **kwargs: Any
+    ) -> None:
+        """Requests the headers and status of the given resource.
+
+        Requests the headers and status of the given resource.
+
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param after: Instructs the server to return elements that appear after the element referred
+         to by the specified token. Default value is None.
+        :type after: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
+        :return: None or the result of cls(response)
+        :rtype: None
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
+        cls: ClsType[None] = kwargs.pop("cls", None)
+
+        _request = build_check_snapshots_request(
+            sync_token=sync_token,
+            after=after,
+            client_request_id=client_request_id,
+            api_version=api_version,
+            headers=_headers,
+            params=_params,
+        )
+        path_format_arguments = {
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
+        }
+        _request.url = self._client.format_url(_request.url, **path_format_arguments)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            _request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
+            raise HttpResponseError(response=response, model=error)
+
+        response_headers = {}
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
+
+        if cls:
+            return cls(pipeline_response, None, response_headers)  # type: ignore
+
+    @distributed_trace
+    def get_snapshot(
+        self,
+        endpoint: str,
+        name: str,
+        select: Optional[List[Union[str, _models.SnapshotFields]]] = None,
+        sync_token: Optional[str] = None,
+        if_match: Optional[str] = None,
+        if_none_match: Optional[str] = None,
+        client_request_id: Optional[str] = None,
+        **kwargs: Any
+    ) -> _models.Snapshot:
+        """Gets a single key-value snapshot.
+
+        Gets a single key-value snapshot.
+
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param name: The name of the snapshot. Required.
+        :type name: str
+        :param select: Used to select what fields are present in the returned resource(s). Default
+         value is None.
+        :type select: list[str or ~azure.appconfiguration.models.SnapshotFields]
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param if_match: Used to perform an operation only if the targeted resource's etag matches the
+         value provided. Default value is None.
+        :type if_match: str
+        :param if_none_match: Used to perform an operation only if the targeted resource's etag does
+         not
+         match the value provided. Default value is None.
+        :type if_none_match: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
+        :return: Snapshot or the result of cls(response)
+        :rtype: ~azure.appconfiguration.models.Snapshot
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
+        cls: ClsType[_models.Snapshot] = kwargs.pop("cls", None)
+
+        _request = build_get_snapshot_request(
+            name=name,
+            select=select,
+            sync_token=sync_token,
+            if_match=if_match,
+            if_none_match=if_none_match,
+            client_request_id=client_request_id,
+            api_version=api_version,
+            headers=_headers,
+            params=_params,
+        )
+        path_format_arguments = {
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
+        }
+        _request.url = self._client.format_url(_request.url, **path_format_arguments)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            _request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
+            raise HttpResponseError(response=response, model=error)
+
+        response_headers = {}
+        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+        response_headers["Link"] = self._deserialize("str", response.headers.get("Link"))
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
+        response_headers["x-ms-client-request-id"] = self._deserialize(
+            "str", response.headers.get("x-ms-client-request-id")
+        )
+
+        deserialized = self._deserialize("Snapshot", pipeline_response.http_response)
+
+        if cls:
+            return cls(pipeline_response, deserialized, response_headers)  # type: ignore
 
         return deserialized  # type: ignore
+
+    def _create_snapshot_initial(
+        self,
+        endpoint: str,
+        name: str,
+        entity: Union[_models.Snapshot, IO[bytes]],
+        sync_token: Optional[str] = None,
+        **kwargs: Any
+    ) -> Iterator[bytes]:
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[Iterator[bytes]] = kwargs.pop("cls", None)
+
+        content_type = content_type or "application/json"
+        _json = None
+        _content = None
+        if isinstance(entity, (IOBase, bytes)):
+            _content = entity
+        else:
+            _json = self._serialize.body(entity, "Snapshot")
+
+        _request = build_create_snapshot_request(
+            name=name,
+            sync_token=sync_token,
+            api_version=api_version,
+            content_type=content_type,
+            json=_json,
+            content=_content,
+            headers=_headers,
+            params=_params,
+        )
+        path_format_arguments = {
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
+        }
+        _request.url = self._client.format_url(_request.url, **path_format_arguments)
+
+        _decompress = kwargs.pop("decompress", True)
+        _stream = True
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            _request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [201]:
+            try:
+                response.read()  # Load the body in memory and close the socket
+            except (StreamConsumedError, StreamClosedError):
+                pass
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
+            raise HttpResponseError(response=response, model=error)
+
+        response_headers = {}
+        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+        response_headers["Link"] = self._deserialize("str", response.headers.get("Link"))
+        response_headers["Operation-Location"] = self._deserialize("str", response.headers.get("Operation-Location"))
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
+
+        deserialized = response.stream_download(self._client._pipeline, decompress=_decompress)
+
+        if cls:
+            return cls(pipeline_response, deserialized, response_headers)  # type: ignore
+
+        return deserialized  # type: ignore
+
+    @overload
+    def begin_create_snapshot(
+        self,
+        endpoint: str,
+        name: str,
+        entity: _models.Snapshot,
+        sync_token: Optional[str] = None,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[_models.Snapshot]:
+        """Creates a key-value snapshot.
+
+        Creates a key-value snapshot.
+
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param name: The name of the key-value snapshot to create. Required.
+        :type name: str
+        :param entity: The key-value snapshot to create. Required.
+        :type entity: ~azure.appconfiguration.models.Snapshot
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :return: An instance of LROPoller that returns either Snapshot or the result of cls(response)
+        :rtype: ~azure.core.polling.LROPoller[~azure.appconfiguration.models.Snapshot]
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+
+    @overload
+    def begin_create_snapshot(
+        self,
+        endpoint: str,
+        name: str,
+        entity: IO[bytes],
+        sync_token: Optional[str] = None,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[_models.Snapshot]:
+        """Creates a key-value snapshot.
+
+        Creates a key-value snapshot.
+
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param name: The name of the key-value snapshot to create. Required.
+        :type name: str
+        :param entity: The key-value snapshot to create. Required.
+        :type entity: IO[bytes]
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
+         Known values are: 'application/json', 'application/vnd.microsoft.appconfig.snapshot+json'.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :return: An instance of LROPoller that returns either Snapshot or the result of cls(response)
+        :rtype: ~azure.core.polling.LROPoller[~azure.appconfiguration.models.Snapshot]
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+
+    @distributed_trace
+    def begin_create_snapshot(
+        self,
+        endpoint: str,
+        name: str,
+        entity: Union[_models.Snapshot, IO[bytes]],
+        sync_token: Optional[str] = None,
+        **kwargs: Any
+    ) -> LROPoller[_models.Snapshot]:
+        """Creates a key-value snapshot.
+
+        Creates a key-value snapshot.
+
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param name: The name of the key-value snapshot to create. Required.
+        :type name: str
+        :param entity: The key-value snapshot to create. Is either a Snapshot type or a IO[bytes] type.
+         Required.
+        :type entity: ~azure.appconfiguration.models.Snapshot or IO[bytes]
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :return: An instance of LROPoller that returns either Snapshot or the result of cls(response)
+        :rtype: ~azure.core.polling.LROPoller[~azure.appconfiguration.models.Snapshot]
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[_models.Snapshot] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._create_snapshot_initial(
+                endpoint=endpoint,
+                name=name,
+                entity=entity,
+                sync_token=sync_token,
+                api_version=api_version,
+                content_type=content_type,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+            raw_result.http_response.read()  # type: ignore
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):
+            response_headers = {}
+            response = pipeline_response.http_response
+            response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+            response_headers["Link"] = self._deserialize("str", response.headers.get("Link"))
+            response_headers["Operation-Location"] = self._deserialize(
+                "str", response.headers.get("Operation-Location")
+            )
+            response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
+
+            deserialized = self._deserialize("Snapshot", pipeline_response.http_response)
+            if cls:
+                return cls(pipeline_response, deserialized, response_headers)  # type: ignore
+            return deserialized
+
+        path_format_arguments = {
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
+        }
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, LROBasePolling(lro_delay, path_format_arguments=path_format_arguments, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller[_models.Snapshot].from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller[_models.Snapshot](
+            self._client, raw_result, get_long_running_output, polling_method  # type: ignore
+        )
+
+    @overload
+    def update_snapshot(
+        self,
+        endpoint: str,
+        name: str,
+        entity: _models.SnapshotUpdateParameters,
+        sync_token: Optional[str] = None,
+        if_match: Optional[str] = None,
+        if_none_match: Optional[str] = None,
+        client_request_id: Optional[str] = None,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> _models.Snapshot:
+        """Updates the state of a key-value snapshot.
+
+        Updates the state of a key-value snapshot.
+
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param name: The name of the key-value snapshot to update. Required.
+        :type name: str
+        :param entity: The parameters used to update the snapshot. Required.
+        :type entity: ~azure.appconfiguration.models.SnapshotUpdateParameters
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param if_match: Used to perform an operation only if the targeted resource's etag matches the
+         value provided. Default value is None.
+        :type if_match: str
+        :param if_none_match: Used to perform an operation only if the targeted resource's etag does
+         not
+         match the value provided. Default value is None.
+        :type if_none_match: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
+        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :return: Snapshot or the result of cls(response)
+        :rtype: ~azure.appconfiguration.models.Snapshot
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+
+    @overload
+    def update_snapshot(
+        self,
+        endpoint: str,
+        name: str,
+        entity: IO[bytes],
+        sync_token: Optional[str] = None,
+        if_match: Optional[str] = None,
+        if_none_match: Optional[str] = None,
+        client_request_id: Optional[str] = None,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> _models.Snapshot:
+        """Updates the state of a key-value snapshot.
+
+        Updates the state of a key-value snapshot.
+
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param name: The name of the key-value snapshot to update. Required.
+        :type name: str
+        :param entity: The parameters used to update the snapshot. Required.
+        :type entity: IO[bytes]
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param if_match: Used to perform an operation only if the targeted resource's etag matches the
+         value provided. Default value is None.
+        :type if_match: str
+        :param if_none_match: Used to perform an operation only if the targeted resource's etag does
+         not
+         match the value provided. Default value is None.
+        :type if_none_match: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
+        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
+         Known values are: 'application/json', 'application/merge-patch+json'. Default value is
+         "application/json".
+        :paramtype content_type: str
+        :return: Snapshot or the result of cls(response)
+        :rtype: ~azure.appconfiguration.models.Snapshot
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+
+    @distributed_trace
+    def update_snapshot(
+        self,
+        endpoint: str,
+        name: str,
+        entity: Union[_models.SnapshotUpdateParameters, IO[bytes]],
+        sync_token: Optional[str] = None,
+        if_match: Optional[str] = None,
+        if_none_match: Optional[str] = None,
+        client_request_id: Optional[str] = None,
+        **kwargs: Any
+    ) -> _models.Snapshot:
+        """Updates the state of a key-value snapshot.
+
+        Updates the state of a key-value snapshot.
+
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param name: The name of the key-value snapshot to update. Required.
+        :type name: str
+        :param entity: The parameters used to update the snapshot. Is either a SnapshotUpdateParameters
+         type or a IO[bytes] type. Required.
+        :type entity: ~azure.appconfiguration.models.SnapshotUpdateParameters or IO[bytes]
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param if_match: Used to perform an operation only if the targeted resource's etag matches the
+         value provided. Default value is None.
+        :type if_match: str
+        :param if_none_match: Used to perform an operation only if the targeted resource's etag does
+         not
+         match the value provided. Default value is None.
+        :type if_none_match: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
+        :return: Snapshot or the result of cls(response)
+        :rtype: ~azure.appconfiguration.models.Snapshot
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[_models.Snapshot] = kwargs.pop("cls", None)
+
+        content_type = content_type or "application/json"
+        _json = None
+        _content = None
+        if isinstance(entity, (IOBase, bytes)):
+            _content = entity
+        else:
+            _json = self._serialize.body(entity, "SnapshotUpdateParameters")
+
+        _request = build_update_snapshot_request(
+            name=name,
+            sync_token=sync_token,
+            if_match=if_match,
+            if_none_match=if_none_match,
+            client_request_id=client_request_id,
+            api_version=api_version,
+            content_type=content_type,
+            json=_json,
+            content=_content,
+            headers=_headers,
+            params=_params,
+        )
+        path_format_arguments = {
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
+        }
+        _request.url = self._client.format_url(_request.url, **path_format_arguments)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            _request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
+            raise HttpResponseError(response=response, model=error)
+
+        response_headers = {}
+        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+        response_headers["Link"] = self._deserialize("str", response.headers.get("Link"))
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
+
+        deserialized = self._deserialize("Snapshot", pipeline_response.http_response)
+
+        if cls:
+            return cls(pipeline_response, deserialized, response_headers)  # type: ignore
+
+        return deserialized  # type: ignore
+
+    @distributed_trace
+    def check_snapshot(  # pylint: disable=inconsistent-return-statements
+        self,
+        endpoint: str,
+        name: str,
+        sync_token: Optional[str] = None,
+        if_match: Optional[str] = None,
+        if_none_match: Optional[str] = None,
+        client_request_id: Optional[str] = None,
+        **kwargs: Any
+    ) -> None:
+        """Requests the headers and status of the given resource.
+
+        Requests the headers and status of the given resource.
+
+        :param endpoint: endpoint - server parameter. Required.
+        :type endpoint: str
+        :param name: The name of the key-value snapshot to check. Required.
+        :type name: str
+        :param sync_token: Used to guarantee real-time consistency between requests. Default value is
+         None.
+        :type sync_token: str
+        :param if_match: Used to perform an operation only if the targeted resource's etag matches the
+         value provided. Default value is None.
+        :type if_match: str
+        :param if_none_match: Used to perform an operation only if the targeted resource's etag does
+         not
+         match the value provided. Default value is None.
+        :type if_none_match: str
+        :param client_request_id: An opaque, globally-unique, client-generated string identifier for
+         the request. Default value is None.
+        :type client_request_id: str
+        :return: None or the result of cls(response)
+        :rtype: None
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        error_map: MutableMapping[int, Type[HttpResponseError]] = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+        api_version: str = kwargs.pop("api_version", _params.pop("api-version", self._config.api_version))
+        cls: ClsType[None] = kwargs.pop("cls", None)
+
+        _request = build_check_snapshot_request(
+            name=name,
+            sync_token=sync_token,
+            if_match=if_match,
+            if_none_match=if_none_match,
+            client_request_id=client_request_id,
+            api_version=api_version,
+            headers=_headers,
+            params=_params,
+        )
+        path_format_arguments = {
+            "endpoint": self._serialize.url("endpoint", endpoint, "str", skip_quote=True),
+        }
+        _request.url = self._client.format_url(_request.url, **path_format_arguments)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            _request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            error = self._deserialize.failsafe_deserialize(_models.Error, pipeline_response)
+            raise HttpResponseError(response=response, model=error)
+
+        response_headers = {}
+        response_headers["ETag"] = self._deserialize("str", response.headers.get("ETag"))
+        response_headers["Link"] = self._deserialize("str", response.headers.get("Link"))
+        response_headers["Sync-Token"] = self._deserialize("str", response.headers.get("Sync-Token"))
+
+        if cls:
+            return cls(pipeline_response, None, response_headers)  # type: ignore

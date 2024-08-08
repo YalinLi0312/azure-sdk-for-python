@@ -180,17 +180,17 @@ class AzureAppConfigurationClientOperationsMixin(AzureAppConfigClientOpGenerated
         response = pipeline_response.http_response
 
         if response.status_code not in [200]:
-                map_error(status_code=response.status_code, response=response, error_map=error_map)
-                error = _deserialize(_models.AppConfigError, response.json())
-                raise HttpResponseError(response=response, model=error)
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            error = _deserialize(_models.AppConfigError, response.json())
+            raise HttpResponseError(response=response, model=error)
 
         response_headers = response.headers
-        deserialized = _deserialize(List[_models.KeyValue], pipeline_response.http_response.json()["items"])
+        deserialized = pipeline_response.http_response.json()
 
         if cls:
-            return cls(pipeline_response, iter(deserialized), response_headers)
+            return cls(pipeline_response, deserialized, response_headers)
 
-        return iter(deserialized)
+        return deserialized
 
 
 __all__: List[str] = [

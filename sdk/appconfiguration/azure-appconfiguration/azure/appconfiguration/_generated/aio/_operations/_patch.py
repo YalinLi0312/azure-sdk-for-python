@@ -185,12 +185,12 @@ class AzureAppConfigurationClientOperationsMixin(AzureAppConfigClientOpGenerated
             raise HttpResponseError(response=response, model=error)
 
         response_headers = response.headers
-        deserialized = _deserialize(List[_models.KeyValue], pipeline_response.http_response.json()["items"])
+        deserialized = pipeline_response.http_response.json()
 
         if cls:
-            return cls(pipeline_response, AsyncList(deserialized), response_headers)
+            return cls(pipeline_response, deserialized, response_headers)
 
-        return AsyncList(deserialized)
+        return deserialized
 
 
 __all__: List[str] = [

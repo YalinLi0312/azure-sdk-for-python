@@ -57,16 +57,14 @@ class TestAppConfigurationClientAsync(AsyncAppConfigTestCase):
                 tags={"tag1": "tag1", "tag2": "tag2"},
             )
             created_kv = await client.add_configuration_setting(test_config_setting)
-            assert (
-                created_kv.label == test_config_setting.label
-                and created_kv.value == test_config_setting.value
-                and created_kv.content_type == test_config_setting.content_type
-                and created_kv.tags == test_config_setting.tags
-                and created_kv.etag != None
-                and created_kv.etag != test_config_setting.etag
-                and created_kv.last_modified != None
-                and created_kv.read_only == False
-            )
+            assert created_kv.label == test_config_setting.label
+            assert created_kv.value == test_config_setting.value
+            assert created_kv.content_type == test_config_setting.content_type
+            assert created_kv.tags == test_config_setting.tags
+            assert created_kv.etag != None
+            assert created_kv.etag != test_config_setting.etag
+            assert created_kv.last_modified != None
+            assert created_kv.read_only == False
 
             # test add existing configuration setting
             with pytest.raises(ResourceExistsError):
@@ -87,14 +85,12 @@ class TestAppConfigurationClientAsync(AsyncAppConfigTestCase):
             to_set_kv.value = to_set_kv.value + "a"
             to_set_kv.tags = {"a": "b", "c": "d"}
             set_kv = await client.set_configuration_setting(to_set_kv)
-            assert (
-                to_set_kv.key == set_kv.key
-                and to_set_kv.label == to_set_kv.label
-                and to_set_kv.value == set_kv.value
-                and to_set_kv.content_type == set_kv.content_type
-                and to_set_kv.tags == set_kv.tags
-                and to_set_kv.etag != set_kv.etag
-            )
+            assert to_set_kv.key == set_kv.key
+            assert to_set_kv.label == to_set_kv.label
+            assert to_set_kv.value == set_kv.value
+            assert to_set_kv.content_type == set_kv.content_type
+            assert to_set_kv.tags == set_kv.tags
+            assert to_set_kv.etag != set_kv.etag
             await client.delete_configuration_setting(key=to_set_kv.key, label=to_set_kv.label)
 
     @app_config_decorator_async
@@ -116,12 +112,10 @@ class TestAppConfigurationClientAsync(AsyncAppConfigTestCase):
             compare_kv = self.create_config_setting_no_label()
             await self.add_for_test(client, compare_kv)
             fetched_kv = await client.get_configuration_setting(compare_kv.key)
-            assert (
-                fetched_kv.key == compare_kv.key
-                and fetched_kv.value == compare_kv.value
-                and fetched_kv.content_type == compare_kv.content_type
-                and fetched_kv.tags == compare_kv.tags
-            )
+            assert fetched_kv.key == compare_kv.key
+            assert fetched_kv.value == compare_kv.value
+            assert fetched_kv.content_type == compare_kv.content_type
+            assert fetched_kv.tags == compare_kv.tags
             assert fetched_kv.label is None
             await client.delete_configuration_setting(key=compare_kv.key, label=compare_kv.label)
 
@@ -132,13 +126,11 @@ class TestAppConfigurationClientAsync(AsyncAppConfigTestCase):
             compare_kv = self.create_config_setting()
             await self.add_for_test(client, compare_kv)
             fetched_kv = await client.get_configuration_setting(compare_kv.key, compare_kv.label)
-            assert (
-                fetched_kv.key == compare_kv.key
-                and fetched_kv.value == compare_kv.value
-                and fetched_kv.content_type == compare_kv.content_type
-                and fetched_kv.tags == compare_kv.tags
-                and fetched_kv.label == compare_kv.label
-            )
+            assert fetched_kv.key == compare_kv.key
+            assert fetched_kv.value == compare_kv.value
+            assert fetched_kv.content_type == compare_kv.content_type
+            assert fetched_kv.tags == compare_kv.tags
+            assert fetched_kv.label == compare_kv.label
             assert fetched_kv.label is not None
             await client.delete_configuration_setting(key=compare_kv.key, label=compare_kv.label)
 

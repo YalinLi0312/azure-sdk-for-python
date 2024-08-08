@@ -368,7 +368,7 @@ class AzureAppConfigurationClient:
                 entity=key_value,
                 key=key_value.key,  # type: ignore
                 label=key_value.label,
-                etag=etag,
+                etag=etag or configuration_setting.etag,
                 match_condition=match_condition,
                 error_map=error_map,
                 **kwargs,
@@ -532,6 +532,7 @@ class AzureAppConfigurationClient:
                 key_value = self._impl.put_lock(
                     key=configuration_setting.key,
                     label=configuration_setting.label,
+                    etag=configuration_setting.etag,
                     match_condition=match_condition,
                     **kwargs,
                 )
@@ -539,6 +540,7 @@ class AzureAppConfigurationClient:
                 key_value = self._impl.delete_lock(
                     key=configuration_setting.key,
                     label=configuration_setting.label,
+                    etag=configuration_setting.etag,
                     match_condition=match_condition,
                     **kwargs,
                 )

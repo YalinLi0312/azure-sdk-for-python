@@ -57,6 +57,8 @@ def analyze_barcodes():
 
     endpoint = os.environ["DOCUMENTINTELLIGENCE_ENDPOINT"]
     key = os.environ["DOCUMENTINTELLIGENCE_API_KEY"]
+    live = os.environ["AZURE_TEST_RUN_LIVE"]
+    breakpoint()
 
     document_intelligence_client = DocumentIntelligenceClient(endpoint=endpoint, credential=AzureKeyCredential(key))
 

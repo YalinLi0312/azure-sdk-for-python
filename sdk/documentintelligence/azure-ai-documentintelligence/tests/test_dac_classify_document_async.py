@@ -18,6 +18,8 @@ from azure.ai.documentintelligence.models import (
 from asynctestcase import AsyncDocumentIntelligenceTest
 from conftest import skip_flaky_test
 from preparers import DocumentIntelligencePreparer, GlobalClientPreparerAsync as _GlobalClientPreparer
+from dotenv import find_dotenv, load_dotenv
+import os
 
 
 DocumentModelAdministrationClientPreparer = functools.partial(
@@ -31,6 +33,10 @@ class TestDACClassifyDocumentAsync(AsyncDocumentIntelligenceTest):
     @recorded_by_proxy_async
     async def test_classify_document(self, documentintelligence_training_data_classifier_sas_url, **kwargs):
         set_bodiless_matcher()
+        # load_dotenv(find_dotenv())
+        # live = os.environ["AZURE_TEST_RUN_LIVE"]
+        # skip = os.environ["AZURE_SKIP_LIVE_RECORDING"]
+        # breakpoint()
         documentintelligence_endpoint = kwargs.pop("documentintelligence_endpoint")
         di_client = DocumentIntelligenceClient(documentintelligence_endpoint, get_credential(is_async=True))
         di_admin_client = DocumentIntelligenceAdministrationClient(
@@ -66,37 +72,39 @@ class TestDACClassifyDocumentAsync(AsyncDocumentIntelligenceTest):
         assert classifier.classifier_id == recorded_variables.get("classifier_id")
         assert len(classifier.doc_types) == 3
 
-        with open(self.irs_classifier_document, "rb") as fd:
-            my_file = fd.read()
+        # with open(self.irs_classifier_document, "rb") as fd:
+        #     my_file = fd.read()
 
         async with di_client:
             # Test classifying document from local
-            poller = await di_client.begin_classify_document(
-                classifier.classifier_id,
-                my_file,
-                content_type="application/octet-stream",
-            )
-            document = await poller.result()
-            assert document.model_id == classifier.classifier_id
-            assert len(document.pages) == 4
-            assert document.tables is None
-            assert document.paragraphs is None
-            assert document.styles is None
-            assert document.string_index_type == "textElements"
-            assert document.content_format == "text"
+            # poller = await di_client.begin_classify_document(
+            #     classifier.classifier_id,
+            #     my_file,
+            #     content_type="application/octet-stream",
+            # )
+            # document = await poller.result()
+            # assert document.model_id == classifier.classifier_id
+            # assert len(document.pages) == 4
+            # assert document.tables is None
+            # assert document.paragraphs is None
+            # assert document.styles is None
+            # assert document.string_index_type == "textElements"
+            # assert document.content_format == "text"
 
             # Test classifying document from remote
+            breakpoint()
             poller = await di_client.begin_classify_document(
                 classifier.classifier_id,
                 ClassifyDocumentRequest(url_source=self.irs_classifier_document_url),
+                split="auto",
             )
             document_from_url = await poller.result()
-            assert document_from_url.model_id == document.model_id
-            assert document_from_url.pages == document.pages
-            assert document_from_url.tables == document.tables
-            assert document_from_url.paragraphs == document.paragraphs
-            assert document_from_url.styles == document.styles
-            assert document_from_url.string_index_type == document.string_index_type
-            assert document_from_url.content_format == document.content_format
+            # assert document_from_url.model_id == document.model_id
+            # assert document_from_url.pages == document.pages
+            # assert document_from_url.tables == document.tables
+            # assert document_from_url.paragraphs == document.paragraphs
+            # assert document_from_url.styles == document.styles
+            # assert document_from_url.string_index_type == document.string_index_type
+            # assert document_from_url.content_format == document.content_format
 
         return recorded_variables

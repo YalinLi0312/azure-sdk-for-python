@@ -169,6 +169,10 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
                 await client.submit_transaction(batch)
             assert error.value.error_code == "ResourceNotFound"
 
+    def check_request_auth(self, pipeline_request):
+        assert self.sas_token not in pipeline_request.http_request.url
+        assert pipeline_request.http_request.headers.get("Authorization") is not None
+
     @cosmos_decorator_async
     @recorded_by_proxy_async
     async def test_table_client_location_mode(self, tables_cosmos_account_name, tables_primary_cosmos_account_key):
@@ -401,7 +405,9 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
             async for e in entities:
                 pass
 
-        async with TableClient(f"{base_url}/?{self.sas_token}", table_name, credential=default_azure_credential) as client:
+        async with TableClient(
+            f"{base_url}/?{self.sas_token}", table_name, credential=default_azure_credential
+        ) as client:
             entities = client.query_entities(
                 query_filter="PartitionKey eq @pk",
                 parameters={"pk": "dummy-pk"},
@@ -441,7 +447,6 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
 
         async with TableServiceClient(base_url, credential=default_azure_credential) as client:
             await client.create_table(table_name)
-            name_filter = "TableName eq '{}'".format(table_name)
             count = 0
             result = client.query_tables(name_filter)
             async for table in result:
@@ -455,7 +460,7 @@ class TestTableClientCosmosAsync(AzureRecordedTestCase, AsyncTableTestCase):
                 parameters={"pk": "dummy-pk"},
                 raw_request_hook=self.check_request_auth,
             )
-            for e in entities:
+            async for e in entities:
                 pass
             client.delete_table(table_name)
 

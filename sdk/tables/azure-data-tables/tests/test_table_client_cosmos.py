@@ -417,7 +417,7 @@ class TestTableClientCosmos(AzureRecordedTestCase, TableTestCase):
         table_name = self.get_resource_name("mytable")
         default_azure_credential = self.get_token_credential()
         name_filter = "TableName eq '{}'".format(table_name)
-        sas_token = self.generate_sas(
+        self.sas_token = self.generate_sas(
             generate_account_sas,
             tables_primary_cosmos_account_key,
             resource_types=ResourceTypes.from_string("sco"),
@@ -504,6 +504,10 @@ class TestTableClientCosmos(AzureRecordedTestCase, TableTestCase):
             result = client.query_tables(name_filter)
             assert len(list(result)) == 1
             client.delete_table(table_name)
+
+    def check_request_auth(self, pipeline_request):
+        assert self.sas_token not in pipeline_request.http_request.url
+        assert pipeline_request.http_request.headers.get("Authorization") is not None
 
 
 # --Helpers-----------------------------------------------------------------

@@ -109,7 +109,7 @@ class TableEntityDecoder(TableEntityDecoderABC[Union[TableEntity, Mapping[str, A
         raw_timestamp: Optional[str] = properties.pop("Timestamp")  # type: ignore[assignment]
         raw_etag: Optional[str] = odata.pop("etag")  # type: ignore[assignment]
         timestamp = None
-        etag = None
+        etag = raw_etag
         if raw_timestamp:
             if not raw_etag:
                 etag = f"W/\"datetime'{quote(raw_timestamp)}'\""

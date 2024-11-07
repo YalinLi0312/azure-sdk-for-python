@@ -33,7 +33,7 @@ from azure.data.tables import TableClient, TableEntityEncoderABC, UpdateMode
 @dataclass
 class Car:
     partition_key: str
-    row_key: UUID
+    row_key: str
     price: Optional[float] = None
     last_updated: Optional[datetime] = None
     product_id: Optional[UUID] = None
@@ -48,17 +48,14 @@ class Car:
 
 
 class MyEncoder(TableEntityEncoderABC[Car]):
-    def prepare_key(self, key: UUID) -> str:  # type: ignore[override]
-        return super().prepare_key(str(key))
-
-    def encode_entity(self, entity: Car) -> Dict[str, Union[str, int, float, bool]]:
+    def __call__(self, entity: Car) -> Dict[str, Union[str, int, float, bool]]:
         encoded = {}
         for key, value in asdict(entity).items():
             if key == "partition_key":
                 encoded["PartitionKey"] = value  # this property should be "PartitionKey" in encoded result
                 continue
             if key == "row_key":
-                encoded["RowKey"] = str(value)  # this property should be "RowKey" in encoded result
+                encoded["RowKey"] = value  # this property should be "RowKey" in encoded result
                 continue
             edm_type, value = self.prepare_value(key, value)
             if edm_type:
@@ -79,7 +76,7 @@ class InsertUpdateDeleteEntity(object):
 
         self.entity = Car(
             partition_key="PK",
-            row_key=uuid4(),
+            row_key=str(uuid4()),
             price=4.99,
             last_updated=datetime.today(),
             product_id=uuid4(),
@@ -128,7 +125,7 @@ class InsertUpdateDeleteEntity(object):
 
             entity1 = Car(
                 partition_key="PK",
-                row_key=uuid4(),
+                row_key=str(uuid4()),
                 price=4.99,
                 last_updated=datetime.today(),
                 product_id=uuid4(),

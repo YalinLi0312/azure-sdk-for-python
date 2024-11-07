@@ -19,18 +19,6 @@ T = TypeVar("T")
 
 
 class TableEntityEncoderABC(abc.ABC, Generic[T]):
-    def prepare_key(self, key: str) -> str:
-        """Duplicate the single quote char to escape.
-
-        :param str key: The entity PartitionKey or RowKey value in table entity.
-        :return: The entity PartitionKey or RowKey value in table entity.
-        :rtype: str
-        """
-        try:
-            return key.replace("'", "''")
-        except (AttributeError, TypeError) as exc:
-            raise TypeError("PartitionKey or RowKey must be of type string.") from exc
-
     def prepare_value(  # pylint: disable=too-many-return-statements
         self, name: Optional[str], value: Any
     ) -> Tuple[Optional[EdmType], Optional[Union[str, int, float, bool]]]:
@@ -138,47 +126,47 @@ class TableEntityEncoderABC(abc.ABC, Generic[T]):
         """
 
 
-class TableEntityEncoder(TableEntityEncoderABC[Union[TableEntity, Mapping[str, Any]]]):
-    def encode_entity(self, entity: Union[TableEntity, Mapping[str, Any]]) -> Dict[str, Union[str, int, float, bool]]:
-        """Encode an entity object into JSON format to send out.
-        The entity format is:
+# class TableEntityEncoder(TableEntityEncoderABC[Union[TableEntity, Mapping[str, Any]]]):
+#     def encode_entity(self, entity: Union[TableEntity, Mapping[str, Any]]) -> Dict[str, Union[str, int, float, bool]]:
+#         """Encode an entity object into JSON format to send out.
+#         The entity format is:
 
-        .. code-block:: json
+#         .. code-block:: json
 
-            {
-                "Address":"Mountain View",
-                "Age":23,
-                "AmountDue":200.23,
-                "CustomerCode@odata.type":"Edm.Guid",
-                "CustomerCode":"c9da6455-213d-42c9-9a79-3e9149a57833",
-                "CustomerSince@odata.type":"Edm.DateTime",
-                "CustomerSince":"2008-07-10T00:00:00",
-                "IsActive":true,
-                "NumberOfOrders@odata.type":"Edm.Int64",
-                "NumberOfOrders":"255",
-                "PartitionKey":"my_partition_key",
-                "RowKey":"my_row_key"
-            }
+#             {
+#                 "Address":"Mountain View",
+#                 "Age":23,
+#                 "AmountDue":200.23,
+#                 "CustomerCode@odata.type":"Edm.Guid",
+#                 "CustomerCode":"c9da6455-213d-42c9-9a79-3e9149a57833",
+#                 "CustomerSince@odata.type":"Edm.DateTime",
+#                 "CustomerSince":"2008-07-10T00:00:00",
+#                 "IsActive":true,
+#                 "NumberOfOrders@odata.type":"Edm.Int64",
+#                 "NumberOfOrders":"255",
+#                 "PartitionKey":"my_partition_key",
+#                 "RowKey":"my_row_key"
+#             }
 
-        :param entity: A table entity.
-        :type entity: ~azure.data.tables.TableEntity or Mapping[str, Any]
-        :return: An entity with property's metadata in JSON format.
-        :rtype: dict
-        """
-        encoded = {}
-        for key, value in entity.items():
-            edm_type, value = self.prepare_value(key, value)
-            try:
-                odata = f"{key}{_ODATA_SUFFIX}"
-                if _ODATA_SUFFIX in key or odata in entity:
-                    encoded[key] = value
-                    continue
-                # The edm type is decided by value
-                # For example, when value=EntityProperty(str(uuid.uuid4), "Edm.Guid"),
-                # the type is string instead of Guid after encoded
-                if edm_type:
-                    encoded[odata] = edm_type.value if hasattr(edm_type, "value") else edm_type
-            except TypeError:
-                pass
-            encoded[key] = value
-        return encoded
+#         :param entity: A table entity.
+#         :type entity: ~azure.data.tables.TableEntity or Mapping[str, Any]
+#         :return: An entity with property's metadata in JSON format.
+#         :rtype: dict
+#         """
+#         encoded = {}
+#         for key, value in entity.items():
+#             edm_type, value = self.prepare_value(key, value)
+#             try:
+#                 odata = f"{key}{_ODATA_SUFFIX}"
+#                 if _ODATA_SUFFIX in key or odata in entity:
+#                     encoded[key] = value
+#                     continue
+#                 # The edm type is decided by value
+#                 # For example, when value=EntityProperty(str(uuid.uuid4), "Edm.Guid"),
+#                 # the type is string instead of Guid after encoded
+#                 if edm_type:
+#                     encoded[odata] = edm_type.value if hasattr(edm_type, "value") else edm_type
+#             except TypeError:
+#                 pass
+#             encoded[key] = value
+#         return encoded

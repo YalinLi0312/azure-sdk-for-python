@@ -16,7 +16,7 @@ from copy import copy
 
 from azure.core.exceptions import HttpResponseError
 from azure.core.pipeline.transport import RequestsTransport
-from azure.data.tables import TableClient, EdmType, EntityProperty, UpdateMode
+from azure.data.tables import TableClient, EdmType, EntityProperty, UpdateMode, TableEntityEncoderABC
 from azure.data.tables._common_conversion import _encode_base64, _to_utc_datetime
 
 from _shared.testcase import TableTestCase, _add_entity_properties
@@ -121,6 +121,8 @@ class TestTableEncoder(AzureRecordedTestCase, TableTestCase):
     @tables_decorator
     @recorded_by_proxy
     def test_encoder_create_entity_basic(self, tables_storage_account_name, tables_primary_storage_account_key):
+        result = callable(TableEntityEncoderABC)
+        breakpoint()
         table_name = self.get_resource_name("uttable01")
         url = self.account_url(tables_storage_account_name, "table")
         # Test basic string, int32 and bool data

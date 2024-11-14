@@ -73,6 +73,41 @@ class TestDocumentIntelligence(DocumentIntelligenceClientTestBase):
 
     @DocumentIntelligencePreparer()
     @recorded_by_proxy
+    def test_list_analyze_batch_results(self, documentintelligence_endpoint):
+        client = self.create_client(endpoint=documentintelligence_endpoint)
+        response = client.list_analyze_batch_results(
+            model_id="str",
+        )
+        result = [r for r in response]
+        # please add some check logic here by yourself
+        # ...
+
+    @DocumentIntelligencePreparer()
+    @recorded_by_proxy
+    def test_delete_analyze_batch_result(self, documentintelligence_endpoint):
+        client = self.create_client(endpoint=documentintelligence_endpoint)
+        response = client.delete_analyze_batch_result(
+            model_id="str",
+            result_id="str",
+        )
+
+        # please add some check logic here by yourself
+        # ...
+
+    @DocumentIntelligencePreparer()
+    @recorded_by_proxy
+    def test_get_analyze_batch_result(self, documentintelligence_endpoint):
+        client = self.create_client(endpoint=documentintelligence_endpoint)
+        response = client.get_analyze_batch_result(
+            model_id="str",
+            result_id="str",
+        )
+
+        # please add some check logic here by yourself
+        # ...
+
+    @DocumentIntelligencePreparer()
+    @recorded_by_proxy
     def test_begin_classify_document(self, documentintelligence_endpoint):
         client = self.create_client(endpoint=documentintelligence_endpoint)
         response = client.begin_classify_document(

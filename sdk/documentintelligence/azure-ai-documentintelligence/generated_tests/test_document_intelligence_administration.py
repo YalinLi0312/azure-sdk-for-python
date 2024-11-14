@@ -243,26 +243,3 @@ class TestDocumentIntelligenceAdministration(DocumentIntelligenceAdministrationC
 
         # please add some check logic here by yourself
         # ...
-
-    @DocumentIntelligenceAdministrationPreparer()
-    @recorded_by_proxy
-    def test_list_analyze_batch_results(self, documentintelligenceadministration_endpoint):
-        client = self.create_client(endpoint=documentintelligenceadministration_endpoint)
-        response = client.list_analyze_batch_results(
-            model_id="str",
-        )
-        result = [r for r in response]
-        # please add some check logic here by yourself
-        # ...
-
-    @DocumentIntelligenceAdministrationPreparer()
-    @recorded_by_proxy
-    def test_delete_analyze_batch_result(self, documentintelligenceadministration_endpoint):
-        client = self.create_client(endpoint=documentintelligenceadministration_endpoint)
-        response = client.delete_analyze_batch_result(
-            model_id="str",
-            result_id="str",
-        )
-
-        # please add some check logic here by yourself
-        # ...

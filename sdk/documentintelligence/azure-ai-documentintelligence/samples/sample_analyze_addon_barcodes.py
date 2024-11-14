@@ -60,6 +60,21 @@ def analyze_barcodes():
 
     document_intelligence_client = DocumentIntelligenceClient(endpoint=endpoint, credential=AzureKeyCredential(key))
 
+    poller = document_intelligence_client.begin_analyze_batch_documents(...)
+    continuation_token = poller.continuation_token
+    poller2 = document_intelligence_client.get_final_result(continuation_token)
+    if poller2.done():
+        result = poller2.result()
+    else:
+        print("Not done")
+
+    poller = document_intelligence_client.begin_analyze_batch_documents(...)
+    operation_id = poller.details["operation_id"]
+    result = document_intelligence_client.get_analyze_batch_result(model_id=model_id, operation_id=operation_id)
+    if result.status == "completed":
+        final_result = result.
+
+    
     # Specify which add-on capabilities to enable.
     with open(path_to_sample_documents, "rb") as f:
         poller = document_intelligence_client.begin_analyze_document(

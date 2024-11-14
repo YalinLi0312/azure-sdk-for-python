@@ -32,18 +32,11 @@ JSON = MutableMapping[str, Any]  # pylint: disable=unsubscriptable-object
 T = TypeVar("T")
 ClsType = Optional[Callable[[PipelineResponse[HttpRequest, HttpResponse], T, Dict[str, Any]], Any]]
 PollingReturnType_co = TypeVar("PollingReturnType_co", covariant=True)
-_FINISHED = frozenset(["succeeded", "canceled", "failed", "completed"])
 
 
 def _parse_operation_id(operation_location_header):
     regex = "[^:]+://[^/]+/documentintelligence/.+/([^?/]+)"
     return re.match(regex, operation_location_header).group(1)
-
-
-def _finished(status) -> bool:
-    if hasattr(status, "value"):
-        status = status.value
-    return str(status).lower() in _FINISHED
 
 
 class AnalyzeDocumentLROPoller(LROPoller[PollingReturnType_co]):
